@@ -45,8 +45,11 @@ export const getContext = cache(async (): Promise<Context | null> => {
 
 export async function requireContext(): Promise<Context> {
   const ctx = await getContext();
-  if (!ctx) redirect("/login");
-  return ctx;
+  if (ctx) return ctx;
+  const user = await getUser();
+  if (!user) redirect("/login");
+  // Utente autenticato ma senza azienda: niente cicli di redirect.
+  redirect((await isPlatformAdmin(user.id).catch(() => false)) ? "/admin" : "/nessuna-azienda");
 }
 
 export async function requirePermission(permission: Permission): Promise<Context> {
