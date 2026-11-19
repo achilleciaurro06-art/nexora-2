@@ -43,10 +43,12 @@ export async function changeQuoteStatusAction(id: string, formData: FormData) {
   revalidatePath("/preventivi");
 }
 
-export async function deleteQuoteAction(id: string) {
+/** Rimuove (archivia) il preventivo: sparisce da liste, follow-up e statistiche; resta recuperabile dall'assistenza. */
+export async function deleteQuoteAction(id: string, _prev: ActionResult | null, _formData: FormData): Promise<ActionResult> {
   const ctx = await requirePermission("data:delete");
-  if (!isUuid(id)) return;
-  await softDeleteQuote(await createClient(), ctx.org.organizationId, id);
-  revalidatePath("/preventivi");
+  if (!isUuid(id)) return fail("Preventivo non valido");
+  const { error } = await softDeleteQuote(await createClient(), ctx.org.organizationId, id);
+  if (error) return fail("Impossibile rimuovere il preventivo");
+  revalidatePath("/preventivi"); revalidatePath("/dashboard"); revalidatePath("/promemoria"); revalidatePath("/clienti");
   redirect("/preventivi");
 }

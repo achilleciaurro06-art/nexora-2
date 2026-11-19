@@ -16,7 +16,7 @@ export const metadata = { title: "Attività" };
 type Row = {
   id: string; title: string; status: string; priority: keyof typeof PRIORITY_LABEL; due_at: string | null;
   assignee_id: string | null; customer_id: string | null; quote_id: string | null;
-  customers: { name: string } | { name: string }[] | null; quotes: { number: string } | { number: string }[] | null;
+  customers: { name: string; deleted_at: string | null } | { name: string; deleted_at: string | null }[] | null; quotes: { number: string; deleted_at: string | null } | { number: string; deleted_at: string | null }[] | null;
 };
 const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
 
@@ -27,7 +27,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   const orgId = ctx.org.organizationId;
 
   let q = db.from("tasks")
-    .select("id, title, status, priority, due_at, assignee_id, customer_id, quote_id, customers(name), quotes(number)")
+    .select("id, title, status, priority, due_at, assignee_id, customer_id, quote_id, customers(name, deleted_at), quotes(number, deleted_at)")
     .eq("organization_id", orgId).is("deleted_at", null).order("due_at", { nullsFirst: false }).limit(500);
   if (mine === "1") q = q.eq("assignee_id", ctx.userId);
   const [{ data }, customers, members, { data: feed }] = await Promise.all([
@@ -54,8 +54,8 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
               <tr key={t.id}>
                 <td className={done ? "text-muted line-through" : "font-medium"}><Link className="hover:underline" href={`/attivita/${t.id}`}>{t.title}</Link></td>
                 <td className="text-sm">
-                  {c ? <Link className="text-primary hover:underline" href={`/clienti/${t.customer_id}`}>{c.name}</Link> : "—"}
-                  {qt && <> · <Link className="text-primary hover:underline" href={`/preventivi/${t.quote_id}`}>{qt.number}</Link></>}
+                  {c ? (c.deleted_at ? <span className="text-muted">{c.name} (rimosso)</span> : <Link className="text-primary hover:underline" href={`/clienti/${t.customer_id}`}>{c.name}</Link>) : "—"}
+                  {qt && <> · {qt.deleted_at ? <span className="text-muted">{qt.number} (rimosso)</span> : <Link className="text-primary hover:underline" href={`/preventivi/${t.quote_id}`}>{qt.number}</Link>}</>}
                 </td>
                 <td>{t.assignee_id ? (names.get(t.assignee_id) ?? "—") : "—"}</td>
                 <td className={tone === "danger" ? "text-danger" : ""}>{t.due_at ? new Date(t.due_at).toLocaleDateString("it-IT") : "—"}</td>

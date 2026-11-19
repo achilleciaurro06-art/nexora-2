@@ -21,7 +21,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   const db = await createClient();
   const orgId = ctx.org.organizationId;
   const { data: task } = await db.from("tasks")
-    .select("id, title, description, status, priority, due_at, assignee_id, assigned_by, customer_id, quote_id, created_by, created_at, completed_at, customers(name), quotes(number)")
+    .select("id, title, description, status, priority, due_at, assignee_id, assigned_by, customer_id, quote_id, created_by, created_at, completed_at, customers(name, deleted_at), quotes(number, deleted_at)")
     .eq("organization_id", orgId).eq("id", id).is("deleted_at", null).maybeSingle();
   if (!task) notFound();
 
@@ -60,8 +60,12 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         <Badge>Priorità {PRIORITY_LABEL[task.priority as keyof typeof PRIORITY_LABEL].toLowerCase()}</Badge>
         {task.due_at && <Badge className={overdue ? "border-danger text-danger" : ""}>{overdue ? "Scaduta il " : "Scade il "}{new Date(task.due_at as string).toLocaleDateString("it-IT")}</Badge>}
         {task.assignee_id && <Badge>Assegnata a {names.get(task.assignee_id as string) ?? "—"}</Badge>}
-        {customer && <Link className="text-primary underline" href={`/clienti/${task.customer_id}`}>Cliente: {(customer as { name: string }).name}</Link>}
-        {quote && <Link className="text-primary underline" href={`/preventivi/${task.quote_id}`}>Preventivo {(quote as { number: string }).number}</Link>}
+        {customer && ((customer as { deleted_at: string | null }).deleted_at
+          ? <span className="text-muted">Cliente: {(customer as { name: string }).name} (rimosso)</span>
+          : <Link className="text-primary underline" href={`/clienti/${task.customer_id}`}>Cliente: {(customer as { name: string }).name}</Link>)}
+        {quote && ((quote as { deleted_at: string | null }).deleted_at
+          ? <span className="text-muted">Preventivo {(quote as { number: string }).number} (rimosso)</span>
+          : <Link className="text-primary underline" href={`/preventivi/${task.quote_id}`}>Preventivo {(quote as { number: string }).number}</Link>)}
       </div>
       <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
         <Card>

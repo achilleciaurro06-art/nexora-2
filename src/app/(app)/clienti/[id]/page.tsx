@@ -14,6 +14,7 @@ import { listMembers, nameMap } from "@/modules/organizzazioni/queries";
 import { PRIORITY_LABEL } from "@/modules/attivita/schemas";
 import { Badge, Card, PageHeader } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { RemoveButton } from "@/components/ui/remove-button";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { formatEur } from "@/lib/money";
 import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
@@ -57,7 +58,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
             {canWrite && <Link href={`/preventivi/nuovo?cliente=${id}`} className={buttonVariants()}>Nuovo preventivo</Link>}
             {canWrite && <Link href={`/attivita/nuova?cliente=${id}`} className={buttonVariants({ variant: "outline" })}>Nuova attività</Link>}
             {canWrite && <Link href={`/documenti?cliente=${id}`} className={buttonVariants({ variant: "outline" })}>Carica documento</Link>}
-            {canDelete && <form action={deleteCustomerAction.bind(null, id)}><Button variant="danger">Elimina</Button></form>}
+            {canDelete && <RemoveButton variant="danger" size="default" label="Rimuovi cliente" action={deleteCustomerAction.bind(null, id)} confirmMessage={`Rimuovere il cliente «${customer.name}»?\n\n• ${openQuotes.length} preventiv${openQuotes.length === 1 ? "o aperto verrà rimosso" : "i aperti verranno rimossi"} insieme al cliente.\n• I preventivi accettati/chiusi restano nello storico.\n• Attività e documenti restano archiviati.\n\nL'operazione viene registrata.`} />}
           </div>
         } />
 

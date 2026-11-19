@@ -265,6 +265,40 @@ select tl3.check('member cannot delete lines of a quote that is not a draft',
   tl3.affected(format($$delete from public.quote_items where quote_id = %L$$, :'q1')) = 0);
 reset role;
 
+-- ---------------------------------------------------------------- rimozione cliente (migrazione 14)
+reset role;
+insert into public.customers (id, organization_id, name) values ('d3000000-0000-0000-0000-0000000000f1', :'oa', 'Cliente da rimuovere');
+set local role authenticated;
+set local request.jwt.claim.sub = 'a3000000-0000-0000-0000-0000000000a2';
+select public.save_quote(null, :'oa', 'd3000000-0000-0000-0000-0000000000f1', 'Aperto 1', null, null, null, null, '[{"description":"x","quantity":1,"unit_price_cents":100}]') as rq1 \gset
+select public.save_quote(null, :'oa', 'd3000000-0000-0000-0000-0000000000f1', 'Accettato', null, null, null, null, '[{"description":"x","quantity":1,"unit_price_cents":100}]') as rq2 \gset
+update public.quotes set status = 'accepted' where id = :'rq2';
+update public.quotes set status = 'sent' where id = :'rq1';
+select tl3.denies('a member cannot remove a customer (role checked in the database)',
+  $$select public.remove_customer('d3000000-0000-0000-0000-0000000000f1')$$);
+reset role;
+set local role authenticated;
+set local request.jwt.claim.sub = 'b3000000-0000-0000-0000-00000000000b';
+select tl3.denies('another organization cannot remove it (customer not visible)',
+  $$select public.remove_customer('d3000000-0000-0000-0000-0000000000f1')$$);
+reset role;
+set local role anon;
+select tl3.denies('anon cannot call remove_customer', $$select public.remove_customer('d3000000-0000-0000-0000-0000000000f1')$$);
+reset role;
+set local role authenticated;
+set local request.jwt.claim.sub = 'a3000000-0000-0000-0000-00000000000a';
+select public.remove_customer('d3000000-0000-0000-0000-0000000000f1') as removed_quotes \gset
+select tl3.check('owner removes the customer and its open quotes in one go (returns how many)', :removed_quotes = 1);
+select tl3.check('the customer is no longer visible in active lists', not exists (select 1 from public.customers where id = 'd3000000-0000-0000-0000-0000000000f1' and deleted_at is null));
+select tl3.check('open quote removed, accepted quote kept in history', (
+  select (select deleted_at is not null from public.quotes where id = :'rq1') and (select deleted_at is null from public.quotes where id = :'rq2')));
+select tl3.denies('removing it twice fails cleanly', $$select public.remove_customer('d3000000-0000-0000-0000-0000000000f1')$$);
+reset role;
+select tl3.check('timeline and audit record the removal', (
+  select count(*) filter (where event = 'deleted' and entity = 'customer') = 1 and count(*) filter (where event = 'deleted' and entity = 'quote') = 1
+  from public.activity_events where customer_id = 'd3000000-0000-0000-0000-0000000000f1')
+  and exists (select 1 from public.audit_logs where entity = 'customers' and entity_id = 'd3000000-0000-0000-0000-0000000000f1' and 'deleted_at' = any (changed_fields)));
+
 -- ---------------------------------------------------------------- RLS ovunque (tabelle nuove incluse)
 select tl3.check('every table in public/private has RLS enabled', (
   select count(*) = 0 from pg_class c join pg_namespace n on n.oid = c.relnamespace

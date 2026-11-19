@@ -8,7 +8,7 @@ import { fail, type ActionResult } from "@/lib/result";
 import { fieldErrors } from "@/lib/forms";
 import { isUuid } from "@/lib/ids";
 import { customerSchema } from "./schemas";
-import { insertCustomer, softDeleteCustomer, updateCustomer } from "./repository";
+import { insertCustomer, updateCustomer } from "./repository";
 
 export async function createCustomerAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const ctx = await requirePermission("data:write");
@@ -31,10 +31,19 @@ export async function updateCustomerAction(id: string, _prev: ActionResult | nul
   return { ok: true };
 }
 
-export async function deleteCustomerAction(id: string) {
-  const ctx = await requirePermission("data:delete");
-  if (!isUuid(id)) return;
-  await softDeleteCustomer(await createClient(), ctx.org.organizationId, id);
-  revalidatePath("/clienti");
+/**
+ * Rimuove il cliente (archiviazione, nessuna cancellazione fisica) e i suoi preventivi ancora aperti, in modo atomico.
+ * Il ruolo owner/admin è verificato sia qui sia nel database.
+ */
+export async function deleteCustomerAction(id: string, _prev: ActionResult | null, _formData: FormData): Promise<ActionResult> {
+  await requirePermission("data:delete");
+  if (!isUuid(id)) return fail("Cliente non valido");
+  const { error } = await (await createClient()).rpc("remove_customer", { p_customer: id });
+  if (error) {
+    if (error.code === "42501") return fail("Non hai i permessi per rimuovere questo cliente");
+    if (error.code === "P0002") return fail("Cliente non trovato o già rimosso");
+    return fail("Impossibile rimuovere il cliente");
+  }
+  revalidatePath("/clienti"); revalidatePath("/preventivi"); revalidatePath("/dashboard"); revalidatePath("/attivita"); revalidatePath("/promemoria");
   redirect("/clienti");
 }

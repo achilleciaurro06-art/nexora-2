@@ -17,6 +17,7 @@ Base di partenza: commit `9529d8b`. Nessuna modifica a Vercel, variabili d'ambie
 | **Impostazioni aziendali (P3)** | Nome, logo (PNG/JPEG ≤1 MB, firma file verificata), indirizzo, P.IVA, C.F., email, telefono, sito, condizioni predefinite e informazioni a piè dei preventivi. Riusate nel **PDF** (logo, dati, piè) e nei nuovi preventivi. Solo titolare/amministratori. | Test DB su permessi e cartella logo; PDF generato e controllato visivamente. |
 | **Archivio documentale (P3)** | Caricamento (anti-duplicato per impronta SHA-256), download, **visualizzazione** (PDF/immagini), eliminazione, modifica metadati (nome, descrizione, cliente), ricerca, filtri per tipologia (PDF/Word/Excel/Immagini/Altro) e cliente. | Policy Storage/RLS testate su DB. |
 | **Audit (P4)** | Esteso a referenti, note, promemoria, **righe preventivo** (prima non tracciate). Pagina "Registro delle operazioni" con filtri e paginazione: owner/admin vedono tutto, gli altri solo le proprie operazioni. **Registro separato delle operazioni di piattaforma** (codici, sospensioni, quote AI). | Test DB. |
+| **Rimozione clienti e preventivi** | Pulsante "Elimina" direttamente nelle liste Clienti e Preventivi (oltre che nelle schede), con conferma che riepiloga le conseguenze. Rimuovere un cliente rimuove in modo atomico anche i suoi preventivi aperti (bozza/inviato); accettati/chiusi, attività e documenti restano nello storico. Solo owner/admin (controllato anche nel database). Archiviazione, nessuna cancellazione fisica; tutto registrato in timeline e audit. I riferimenti a clienti/preventivi rimossi compaiono come "(rimosso)" senza link. | Test DB: ruolo, isolamento, anon, atomicità, storico, timeline e audit. UI non provata in browser. |
 | **Sicurezza (P4)** | Vedi §7 del documento e §6/§7 qui sotto. | Test DB + controllo automatico sulle Server Action. |
 
 ## 2. Funzionalità già presenti e mantenute (non modificate nel comportamento)
@@ -38,6 +39,7 @@ Solo aggiunte, nessuna eliminazione di dati. Colonne: profilo aziendale (8) su `
 - `…011_price_analyses.sql` – storico analisi prezzi.
 - `…012_audit_quote_items.sql` – tracciamento delle modifiche alle righe preventivo.
 - `…013_member_edit_draft_items.sql` – correzione del difetto sotto.
+- `…014_remove_customer.sql` – rimozione atomica di un cliente e dei suoi preventivi aperti.
 
 Compatibilità: sono additive; l'app attualmente online non ne è toccata. Provate anche su un database già popolato (backfill: 4 eventi su dati di esempio, dati intatti). **Vanno applicate in ordine PRIMA di pubblicare il nuovo codice.**
 

@@ -7,6 +7,7 @@ import { getQuote } from "@/modules/preventivi/repository";
 import { changeQuoteStatusAction, deleteQuoteAction } from "@/modules/preventivi/actions";
 import { Badge, Card, PageHeader, Table } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { RemoveButton } from "@/components/ui/remove-button";
 import { formatEur } from "@/lib/money";
 import { PricePanel } from "@/modules/prezzi/ui/price-panel";
 import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
@@ -33,13 +34,13 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
             <a href={`/preventivi/${id}/pdf`} download className={buttonVariants({ variant: "outline" })}>Scarica PDF</a>
             {canWrite && <Link href={`/attivita/nuova?preventivo=${id}`} className={buttonVariants({ variant: "outline" })}>Crea attività</Link>}
             {canWrite && quote.status === "draft" && <Link href={`/preventivi/${id}/modifica`} className={buttonVariants({ variant: "outline" })}>Modifica</Link>}
-            {can(ctx.org.role, "data:delete") && <form action={deleteQuoteAction.bind(null, id)}><Button variant="danger">Elimina</Button></form>}
+            {can(ctx.org.role, "data:delete") && <RemoveButton variant="danger" size="default" label="Rimuovi preventivo" action={deleteQuoteAction.bind(null, id)} confirmMessage={`Rimuovere il preventivo ${quote.number}?${quote.status === "accepted" ? "\n\nATTENZIONE: è un preventivo ACCETTATO." : ""}\n\nNon comparirà più in elenchi, follow-up e statistiche. L'operazione viene registrata.`} />}
           </div>
         } />
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <Card>
           <dl className="mb-4 grid gap-2 text-sm sm:grid-cols-2">
-            <div><dt className="text-muted">Cliente</dt><dd><Link className="text-primary hover:underline" href={`/clienti/${quote.customer_id}`}>{customer?.name}</Link></dd></div>
+            <div><dt className="text-muted">Cliente</dt><dd>{customer?.deleted_at ? <span className="text-muted">{customer.name} (cliente rimosso)</span> : <Link className="text-primary hover:underline" href={`/clienti/${quote.customer_id}`}>{customer?.name}</Link>}</dd></div>
             <div><dt className="text-muted">Stato</dt><dd><Badge>{QUOTE_STATUS_LABEL[quote.status]}</Badge></dd></div>
             <div><dt className="text-muted">Emissione</dt><dd>{new Date(quote.issue_date).toLocaleDateString("it-IT")}</dd></div>
             <div><dt className="text-muted">Follow-up</dt><dd>{quote.follow_up_date ? new Date(quote.follow_up_date).toLocaleDateString("it-IT") : "—"}</dd></div>

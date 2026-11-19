@@ -5,6 +5,7 @@ const config = [
   ...coreWebVitals,
   ...typescript,
   { ignores: [".next/**", "node_modules/**", "next-env.d.ts"] },
+  { rules: { "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }] } },
   {
     // Il client service-role è consentito solo ai moduli che ne hanno bisogno.
     files: ["src/**/*.{ts,tsx}"],
