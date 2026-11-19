@@ -1,14 +1,25 @@
 import "server-only";
 import { GoogleGenAI } from "@google/genai";
 import { env } from "@/server/env";
-import type { AiProvider, AiRequest, AiResponse } from "../provider";
+import { AiProviderError, type AiProvider, type AiRequest, type AiResponse } from "../provider";
+
+const RETRY_DELAYS_MS = [700, 1800];
+
+function statusOf(err: unknown): number | undefined {
+  const s = (err as { status?: unknown })?.status;
+  if (typeof s === "number") return s;
+  const m = /"code":\s*(\d{3})/.exec(err instanceof Error ? err.message : "");
+  return m ? Number(m[1]) : undefined;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class GeminiProvider implements AiProvider {
   readonly name = "gemini";
 
   async generate(req: AiRequest): Promise<AiResponse> {
     const e = env();
-    if (!e.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY non configurata");
+    if (!e.GEMINI_API_KEY) throw new AiProviderError("GEMINI_API_KEY non configurata", "auth");
     const ai = new GoogleGenAI({ apiKey: e.GEMINI_API_KEY });
 
     const contents = req.messages.map((m, idx) => {
@@ -19,21 +30,48 @@ export class GeminiProvider implements AiProvider {
       return { role: m.role === "assistant" ? "model" : "user", parts };
     });
 
-    const res = await ai.models.generateContent({
-      model: e.GEMINI_MODEL,
-      contents,
-      config: {
-        systemInstruction: req.system,
-        maxOutputTokens: req.maxOutputTokens ?? 1024,
-        ...(req.jsonSchema ? { responseMimeType: "application/json", responseJsonSchema: req.jsonSchema } : {}),
-      },
-    });
+    // modello principale, poi fallback: se uno è sovraccarico (503) o non disponibile (404) si prova l'altro
+    const models = [...new Set([e.GEMINI_MODEL, e.GEMINI_FALLBACK_MODEL])];
+    let lastKind: AiProviderError["kind"] = "other";
+    let lastStatus: number | undefined;
+    let lastMessage = "";
 
-    return {
-      text: res.text ?? "",
-      model: e.GEMINI_MODEL,
-      inputTokens: res.usageMetadata?.promptTokenCount ?? 0,
-      outputTokens: res.usageMetadata?.candidatesTokenCount ?? 0,
-    };
+    for (const model of models) {
+      for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+        try {
+          const res = await ai.models.generateContent({
+            model,
+            contents,
+            config: {
+              systemInstruction: req.system,
+              maxOutputTokens: req.maxOutputTokens ?? 1024,
+              ...(req.jsonSchema ? { responseMimeType: "application/json", responseJsonSchema: req.jsonSchema } : {}),
+            },
+          });
+          return {
+            text: res.text ?? "",
+            model,
+            inputTokens: res.usageMetadata?.promptTokenCount ?? 0,
+            outputTokens: res.usageMetadata?.candidatesTokenCount ?? 0,
+          };
+        } catch (err) {
+          const status = statusOf(err);
+          lastStatus = status;
+          lastMessage = err instanceof Error ? err.message.slice(0, 300) : "errore sconosciuto";
+          console.error(`gemini ${model} tentativo ${attempt + 1}: stato ${status ?? "?"}`);
+          if (status === 401 || status === 403) throw new AiProviderError(lastMessage, "auth", status);
+          if (status === 404) { lastKind = "not_found"; break; } // modello assente: passa al fallback
+          if (status === 429 || (status !== undefined && status >= 500) || status === undefined) {
+            lastKind = "overloaded";
+            const delay = RETRY_DELAYS_MS[attempt];
+            if (delay === undefined) break;
+            await sleep(delay);
+            continue;
+          }
+          throw new AiProviderError(lastMessage, "other", status);
+        }
+      }
+    }
+    throw new AiProviderError(lastMessage || "AI non disponibile", lastKind, lastStatus);
   }
 }

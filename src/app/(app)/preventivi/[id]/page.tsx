@@ -9,7 +9,6 @@ import { Badge, Card, PageHeader, Table } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { formatEur } from "@/lib/money";
 import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
-import { PrintButton } from "@/components/layout/print-button";
 
 const NEXT: Record<QuoteStatus, QuoteStatus[]> = {
   draft: ["sent"], sent: ["accepted", "rejected", "expired", "draft"], accepted: [], rejected: ["draft"], expired: ["draft"],
@@ -28,7 +27,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       <PageHeader title={`Preventivo ${quote.number}`} description={quote.title ?? undefined}
         actions={
           <div className="no-print flex flex-wrap gap-2">
-            <PrintButton />
+            <a href={`/preventivi/${id}/pdf`} download className={buttonVariants({ variant: "outline" })}>Scarica PDF</a>
             {canWrite && quote.status === "draft" && <Link href={`/preventivi/${id}/modifica`} className={buttonVariants({ variant: "outline" })}>Modifica</Link>}
             {can(ctx.org.role, "data:delete") && <form action={deleteQuoteAction.bind(null, id)}><Button variant="danger">Elimina</Button></form>}
           </div>

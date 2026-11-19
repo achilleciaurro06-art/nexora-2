@@ -7,6 +7,7 @@ import { ChatForm } from "@/modules/copilot/ui/chat";
 import { Card, PageHeader } from "@/components/ui/card";
 
 export const metadata = { title: "Copilot AI" };
+export const maxDuration = 60;
 
 export default async function CopilotPage({ searchParams }: { searchParams: Promise<{ c?: string }> }) {
   const { c } = await searchParams;

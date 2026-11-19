@@ -6,3 +6,4 @@ export function getAiProvider(): AiProvider {
   return new GeminiProvider();
 }
 export type { AiProvider, AiRequest, AiResponse, AiMessage } from "./provider";
+export { AiProviderError, userMessageForAiError } from "./provider";

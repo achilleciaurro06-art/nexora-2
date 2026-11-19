@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAiProvider } from "@/server/ai";
+import { getAiProvider, userMessageForAiError } from "@/server/ai";
 import { estimateTokens, recordUsage, reserveTokens } from "@/server/ai/usage";
 
 const MAX_OUTPUT = 1024;
@@ -82,7 +82,7 @@ export async function askCopilot(args: {
     if (!parsed.success) return { ok: true, reply: res.text.slice(0, 4000), suggestions: [] };
     return { ok: true, reply: parsed.data.reply, suggestions: parsed.data.suggestions };
   } catch (e) {
-    console.error("copilot error", e instanceof Error ? e.message : "unknown");
-    return { ok: false, error: "Il Copilot non è al momento disponibile. Riprova tra poco." };
+    console.error("copilot error", e instanceof Error ? e.message.slice(0, 300) : "unknown");
+    return { ok: false, error: userMessageForAiError(e) };
   }
 }

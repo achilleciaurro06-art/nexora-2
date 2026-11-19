@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAiProvider } from "@/server/ai";
+import { getAiProvider, userMessageForAiError } from "@/server/ai";
 import { recordUsage, reserveTokens } from "@/server/ai/usage";
 
 const MAX_INLINE_BYTES = 10 * 1024 * 1024;
@@ -78,7 +78,7 @@ export async function analyzeDocument(args: { db: SupabaseClient; orgId: string;
     await db.from("documents").update({ analysis_status: "done" }).eq("organization_id", orgId).eq("id", documentId);
     return { ok: true, suggestionId: sug.id as string };
   } catch (e) {
-    console.error("document analysis error", e instanceof Error ? e.message : "unknown");
-    return fail("Il servizio AI non è disponibile. Riprova tra poco.");
+    console.error("document analysis error", e instanceof Error ? e.message.slice(0, 300) : "unknown");
+    return fail(userMessageForAiError(e));
   }
 }
