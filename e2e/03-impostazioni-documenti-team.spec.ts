@@ -24,7 +24,7 @@ test("impostazioni aziendali: salvataggio e persistenza", async ({ page }) => {
   await page.getByLabel("Email", { exact: true }).fill("info@azienda-prova.it");
   await page.getByLabel("Telefono").fill("011 5550000");
   await page.getByLabel("Sito web").fill("https://www.azienda-prova.it");
-  await page.getByRole("button", { name: "Salva" }).click();
+  await page.getByRole("button", { name: "Salva", exact: true }).click();
   await expect(page.getByText("Dati aziendali salvati")).toBeVisible();
   await page.reload();
   await expect(page.getByLabel("Indirizzo (sede operativa)")).toHaveValue("Via Roma 1, 10100 Torino (TO)");
@@ -32,7 +32,7 @@ test("impostazioni aziendali: salvataggio e persistenza", async ({ page }) => {
   await page.goto("/impostazioni/preventivi");
   await page.getByLabel("Condizioni commerciali predefinite").fill("Validità 30 giorni. Pagamento 50% all'ordine.");
   await page.getByLabel("Informazioni a piè dei preventivi (PDF)").fill("Bonifico: IBAN IT60X0542811101000000123456");
-  await page.getByRole("button", { name: "Salva" }).click();
+  await page.getByRole("button", { name: "Salva", exact: true }).click();
   await expect(page.getByText("Impostazioni dei preventivi salvate")).toBeVisible();
 });
 
@@ -159,7 +159,7 @@ test("il collaboratore (ruolo membro) non vede né può usare le funzioni riserv
   await expect(p.getByLabel("Email da invitare")).toHaveCount(0);
   await p.goto("/impostazioni/azienda");
   await expect(p.getByLabel("Indirizzo (sede operativa)")).toBeDisabled();
-  await expect(p.getByRole("button", { name: "Salva" })).toHaveCount(0);
+  await expect(p.getByRole("button", { name: "Salva", exact: true })).toHaveCount(0);
   const res = await p.goto("/admin");
   expect(res?.status()).toBe(404);
   await ctx.close();
@@ -188,7 +188,7 @@ test("rimozione di un cliente dalla lista: preventivi aperti rimossi, accettati 
   // cliente con un preventivo ACCETTATO e uno in BOZZA
   await page.goto("/clienti/nuovo");
   await page.getByLabel("Ragione sociale / Nome *").fill("Verdi Infissi S.n.c.");
-  await page.getByRole("button", { name: "Salva" }).click();
+  await page.getByRole("button", { name: "Salva", exact: true }).click();
   await page.waitForURL(/\/clienti\/[0-9a-f-]{36}$/);
   const customerId = page.url().split("/").pop();
   for (const title of ["Preventivo accettato", "Preventivo in bozza"]) {
@@ -268,7 +268,7 @@ test("console di piattaforma: quota AI e registro delle azioni; nessun dato comm
   await expect(p).toHaveURL(/\/admin/);
   const quota = p.getByLabel(/Limite token Azienda Prova/);
   await quota.fill("500000");
-  await quota.locator("xpath=ancestor::form").getByRole("button", { name: "Salva" }).click();
+  await quota.locator("xpath=ancestor::form").getByRole("button", { name: "Salva", exact: true }).click();
   await expect(p.getByRole("cell", { name: "set_ai_quota" }).first()).toBeVisible();
   await expect(p.getByText("Rossi Costruzioni")).toHaveCount(0); // nessun dato commerciale delle aziende
   await ctx.close();

@@ -14,13 +14,22 @@ export type QuotePdfData = {
   };
   customer: { name: string; vatNumber?: string | null; taxCode?: string | null; email?: string | null; phone?: string | null; address?: string | null } | null;
   items: { description: string; quantity: number; unitPriceCents: number; discountPercent: number; vatRate: number; lineNetCents: number }[];
+  options?: Partial<PdfOptions>;
 };
+
+export type PdfOptions = {
+  template: "classic" | "minimal"; accent: "indigo" | "green" | "slate" | "orange" | "red";
+  showLogo: boolean; showPayment: boolean; showBrand: boolean;
+};
+export const DEFAULT_PDF_OPTIONS: PdfOptions = { template: "classic", accent: "indigo", showLogo: true, showPayment: true, showBrand: true };
+const ACCENTS = {
+  indigo: rgb(0.31, 0.27, 0.9), green: rgb(0.09, 0.5, 0.28), slate: rgb(0.28, 0.33, 0.41), orange: rgb(0.85, 0.4, 0.05), red: rgb(0.75, 0.15, 0.15),
+} as const;
 
 const STATUS: Record<string, string> = { draft: "Bozza", sent: "Inviato", accepted: "Accettato", rejected: "Rifiutato", expired: "Scaduto" };
 const PAGE = { w: 595.28, h: 841.89, margin: 48 };
 const INK = rgb(0.1, 0.12, 0.18);
 const MUTED = rgb(0.4, 0.43, 0.5);
-const ACCENT = rgb(0.31, 0.27, 0.9);
 const LINE = rgb(0.85, 0.87, 0.9);
 
 /** Le font standard PDF supportano WinAnsi: i caratteri fuori set vengono sostituiti. */
@@ -55,6 +64,8 @@ const fmtDate = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00Z`).toLo
 const num = (n: number) => new Intl.NumberFormat("it-IT", { maximumFractionDigits: 3 }).format(n);
 
 export async function buildQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
+  const opt: PdfOptions = { ...DEFAULT_PDF_OPTIONS, ...data.options };
+  const ACCENT = opt.template === "minimal" ? INK : ACCENTS[opt.accent];
   const pdf = await PDFDocument.create();
   pdf.setTitle(`Preventivo ${data.quote.number}`);
   pdf.setAuthor(pdfSafe(data.organization.name));
@@ -98,7 +109,7 @@ export async function buildQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
   const org = data.organization;
   let leftY = y;
   let logoDrawn = false;
-  if (org.logo) {
+  if (org.logo && opt.showLogo) {
     try {
       const img = org.logo.type === "png" ? await pdf.embedPng(org.logo.bytes) : await pdf.embedJpg(org.logo.bytes);
       const scale = Math.min(150 / img.width, 48 / img.height, 1);
@@ -184,7 +195,7 @@ export async function buildQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
     y -= 10;
   }
 
-  if (org.iban || org.bankName) {
+  if (opt.showPayment && (org.iban || org.bankName)) {
     ensure(36);
     text("Dati per il pagamento", margin, y, { size: 9, font: bold, color: MUTED }); y -= 14;
     for (const l of wrap([org.bankName, org.iban && `IBAN ${org.iban}`].filter(Boolean).join(" — "), font, 9.5, right - margin)) { ensure(14); text(l, margin, y, { size: 9.5 }); y -= 12.5; }
@@ -201,8 +212,10 @@ export async function buildQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
   pages.forEach((p, i) => {
     const label = `Preventivo ${data.quote.number} · Pagina ${i + 1} di ${pages.length}`;
     p.drawText(pdfSafe(label), { x: margin, y: 28, size: 8, font, color: MUTED });
-    const brand = "Generato con NEXORA";
-    p.drawText(brand, { x: right - font.widthOfTextAtSize(brand, 8), y: 28, size: 8, font, color: MUTED });
+    if (opt.showBrand) {
+      const brand = "Generato con NEXORA";
+      p.drawText(brand, { x: right - font.widthOfTextAtSize(brand, 8), y: 28, size: 8, font, color: MUTED });
+    }
   });
 
   return pdf.save();

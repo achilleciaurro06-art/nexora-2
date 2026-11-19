@@ -3,11 +3,12 @@ import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
 import { can } from "@/server/auth/permissions";
 import { listQuotes } from "@/modules/preventivi/repository";
-import { Badge, PageHeader, Table } from "@/components/ui/card";
+import { PageHeader, Table } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { formatEur } from "@/lib/money";
 import { RemoveButton } from "@/components/ui/remove-button";
 import { deleteQuoteAction } from "@/modules/preventivi/actions";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
 
 export const metadata = { title: "Preventivi" };
@@ -40,7 +41,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
                 <td><Link className="font-medium text-primary hover:underline" href={`/preventivi/${q.id}`}>{q.number}</Link></td>
                 <td>{c ? (c.deleted_at ? <span className="text-muted">{c.name} (cliente rimosso)</span> : c.name) : "—"}</td><td>{q.title ?? "—"}</td>
                 <td>{new Date(q.issue_date).toLocaleDateString("it-IT")}</td>
-                <td><Badge>{QUOTE_STATUS_LABEL[q.status]}</Badge></td>
+                <td><StatusBadge status={q.status} /></td>
                 <td className="text-right">{formatEur(q.total_cents)}</td>
                 {canDelete && (
                   <td className="text-right">

@@ -7,7 +7,8 @@ import type { ActionResult } from "@/lib/result";
 import { uploadAvatarAction, uploadLogoAction } from "../actions";
 import { useFormAction } from "@/lib/use-form-action";
 
-type Action = (prev: ActionResult | null, formData: FormData) => Promise<ActionResult>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Action = (prev: any, formData: FormData) => Promise<ActionResult<any>>;
 
 /** Modulo generico delle impostazioni: i campi arrivano come figli (server component), l'esito si mostra qui. */
 export function ActionForm({ action, children, submitLabel = "Salva", readOnly = false, successMessage = "Salvato" }: {
@@ -18,7 +19,7 @@ export function ActionForm({ action, children, submitLabel = "Salva", readOnly =
     <form onSubmit={onSubmit} className="grid max-w-3xl gap-4 sm:grid-cols-2">
       {children}
       {state && !state.ok && <div className="sm:col-span-2"><Alert>{state.error}</Alert></div>}
-      {state?.ok && <div className="sm:col-span-2"><Alert kind="success">{successMessage}</Alert></div>}
+      {state?.ok && <div className="sm:col-span-2"><Alert kind="success">{typeof state.data === "string" ? state.data : successMessage}</Alert></div>}
       {!readOnly && <div className="sm:col-span-2"><Button disabled={pending}>{pending ? "Salvataggio…" : submitLabel}</Button></div>}
     </form>
   );

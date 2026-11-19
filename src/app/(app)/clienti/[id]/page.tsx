@@ -17,7 +17,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { RemoveButton } from "@/components/ui/remove-button";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { formatEur } from "@/lib/money";
-import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
+import { StatusBadge } from "@/components/ui/status-badge";
+import type { QuoteStatus } from "@/types/domain";
 
 const CATEGORY = (mime: string) =>
   mime === "application/pdf" ? "PDF" : mime.startsWith("image/") ? "Immagine" : mime.includes("wordprocessingml") ? "Word" : mime.includes("spreadsheetml") ? "Excel" : "File";
@@ -148,7 +149,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
                 {(quotes ?? []).map((q) => (
                   <li key={q.id as string} className="flex items-center justify-between gap-2">
                     <span className="min-w-0 truncate"><Link className="text-primary hover:underline" href={`/preventivi/${q.id}`}>{q.number as string}</Link>{q.title ? ` · ${q.title}` : ""}</span>
-                    <span className="flex shrink-0 items-center gap-2"><Badge>{QUOTE_STATUS_LABEL[q.status as QuoteStatus]}</Badge>{formatEur(q.total_cents as number)}</span>
+                    <span className="flex shrink-0 items-center gap-2"><StatusBadge status={q.status as QuoteStatus} />{formatEur(q.total_cents as number)}</span>
                   </li>
                 ))}
               </ul>

@@ -26,7 +26,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const in7 = new Date(now.getTime() + 7 * 86_400_000).toISOString();
   const in7d = isoDayOffset(7);
 
-  const [customers, quotes, openTasks, reminders, followUpsCount, followUpList, customerDates, doneTasks, recontact, events] = await Promise.all([
+  const [customers, quotes, openTasks, reminders, followUpsCount, followUpList, customerDates, doneTasks, recontact, events, billings] = await Promise.all([
     db.from("customers").select("id", { count: "exact", head: true }).eq("organization_id", orgId).is("deleted_at", null),
     db.from("quotes").select("status, total_cents, issue_date").eq("organization_id", orgId).is("deleted_at", null).limit(5000),
     db.from("tasks").select("id, title, due_at, priority").eq("organization_id", orgId).is("deleted_at", null).in("status", ["todo", "in_progress"]).order("due_at", { nullsFirst: false }).limit(200),
@@ -37,6 +37,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     db.from("tasks").select("id", { count: "exact", head: true }).eq("organization_id", orgId).is("deleted_at", null).eq("status", "done").gte("completed_at", startIso),
     db.rpc("customers_to_recontact", { p_org: orgId, p_days: 60, p_limit: 5 }),
     db.from("activity_events").select("id, summary, created_at, entity, entity_id, customer_id").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(8),
+    db.from("quote_billings").select("amount_cents").eq("organization_id", orgId).gte("billed_at", startDay).limit(5000),
   ]);
 
   const q = (quotes.data ?? []) as { status: QuoteStatus; total_cents: number; issue_date: string }[];
@@ -70,6 +71,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const period = [
     { label: "Preventivi emessi", value: String(ps.count), sub: formatEur(ps.totalCents) },
     { label: "Accettati", value: formatEur(ps.acceptedCents), sub: `${ps.byStatus.accepted ?? 0} preventivi` },
+    { label: "Fatturato registrato", value: formatEur((billings.data ?? []).reduce((n, b) => n + Number(b.amount_cents), 0)), sub: "importi realmente fatturati" },
     { label: "Rifiutati / scaduti", value: String((ps.byStatus.rejected ?? 0) + (ps.byStatus.expired ?? 0)), sub: `${ps.byStatus.rejected ?? 0} rifiutati` },
     { label: "In attesa", value: String((ps.byStatus.sent ?? 0) + (ps.byStatus.draft ?? 0)), sub: `${ps.byStatus.sent ?? 0} inviati · ${ps.byStatus.draft ?? 0} bozze` },
     { label: "Conversione", value: ps.conversionPct === null ? "—" : `${ps.conversionPct}%`, sub: ps.decided ? `su ${ps.decided} decisi` : "nessun preventivo deciso" },

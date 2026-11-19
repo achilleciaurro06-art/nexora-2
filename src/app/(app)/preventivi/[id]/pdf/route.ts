@@ -3,6 +3,7 @@ import { getContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
 import { getQuote } from "@/modules/preventivi/repository";
 import { buildQuotePdf, quotePdfFilename } from "@/modules/preventivi/pdf";
+import { parseOrgSettings } from "@/modules/impostazioni/settings";
 
 /** Genera il PDF lato server e lo restituisce come download (Content-Disposition: attachment). */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -14,7 +15,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const found = await getQuote(db, ctx.org.organizationId, id);
   if (!found) return NextResponse.json({ error: "Non trovato" }, { status: 404 });
   const { data: org } = await db.from("organizations")
-    .select("name, vat_number, tax_code, address, legal_address, email, pec, phone, website, logo_path, quote_footer, bank_name, iban")
+    .select("settings, name, vat_number, tax_code, address, legal_address, email, pec, phone, website, logo_path, quote_footer, bank_name, iban")
     .eq("id", ctx.org.organizationId).maybeSingle();
   let logo: { bytes: Uint8Array; type: "png" | "jpg" } | null = null;
   if (org?.logo_path) {
@@ -26,7 +27,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const c = quote.customers;
   const address = c ? [c.address_line, [c.postal_code, c.city, c.province && `(${c.province})`].filter(Boolean).join(" ")].filter(Boolean).join(", ") : null;
 
+  const qs = parseOrgSettings(org?.settings).quotes;
   const bytes = await buildQuotePdf({
+    options: { template: qs.pdf_template, accent: qs.pdf_accent, showLogo: qs.pdf_show_logo, showPayment: qs.pdf_show_payment, showBrand: qs.pdf_show_brand },
     organization: {
       name: (org?.name as string | undefined) ?? ctx.org.name, vatNumber: (org?.vat_number as string | null) ?? null,
       taxCode: (org?.tax_code as string | null) ?? null, address: (org?.address as string | null) ?? null, email: (org?.email as string | null) ?? null,

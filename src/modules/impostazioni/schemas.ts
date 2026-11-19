@@ -26,7 +26,18 @@ export const quoteTextsSchema = z.object({ quote_default_terms: optionalText(400
 export const quoteSettingsSchema = z.object({
   default_vat_rate: z.coerce.number("IVA non valida").min(0, "IVA non valida").max(100, "IVA non valida"),
   default_validity_days: z.coerce.number("Validità non valida").int("Validità non valida").min(0).max(365, "Massimo 365 giorni"),
+  pdf_template: z.enum(["classic", "minimal"], "Modello PDF non valido"),
+  pdf_accent: z.enum(["indigo", "green", "slate", "orange", "red"], "Colore non valido"),
+  pdf_show_logo: z.preprocess((v) => v === "on", z.boolean()),
+  pdf_show_payment: z.preprocess((v) => v === "on", z.boolean()),
+  pdf_show_brand: z.preprocess((v) => v === "on", z.boolean()),
 });
+export const quoteNumberingSchema = z.object({
+  prefix: z.string().trim().max(10, "Prefisso: massimo 10 caratteri").regex(/^[A-Za-z0-9._-]*$/, "Prefisso: solo lettere, numeri, punto, trattino"),
+  digits: z.coerce.number("Cifre non valide").int().min(3, "Da 3 a 8 cifre").max(8, "Da 3 a 8 cifre"),
+  yearly: z.preprocess((v) => v === "on", z.boolean()),
+});
+export const nextQuoteNumberSchema = z.object({ next: z.coerce.number("Numero non valido").int("Numero non valido").min(1, "Almeno 1").max(99_999_999, "Numero troppo grande") });
 export const aiSettingsSchema = z.object({ context: z.string().trim().max(1500, "Massimo 1500 caratteri"), tone: z.enum(["concise", "detailed"]) });
 export const emailSettingsSchema = z.object({
   sender_name: z.string().trim().max(120), reply_to: z.union([z.literal(""), z.email("Email di risposta non valida")]), signature: z.string().trim().max(1000, "Massimo 1000 caratteri"),

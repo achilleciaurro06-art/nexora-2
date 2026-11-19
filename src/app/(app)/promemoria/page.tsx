@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
-import { Badge, Card, PageHeader, Table } from "@/components/ui/card";
+import { Card, PageHeader, Table } from "@/components/ui/card";
 import { formatEur } from "@/lib/money";
 import { isoDayOffset, isoOffset } from "@/lib/dates";
-import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
+import { StatusBadge } from "@/components/ui/status-badge";
+import type { QuoteStatus } from "@/types/domain";
 
 export const metadata = { title: "Promemoria" };
 
@@ -44,7 +45,7 @@ export default async function RemindersPage() {
                 </td>
                 <td><Link className="text-primary hover:underline" href={`/preventivi/${q.id}`}>{q.number as string}{q.title ? ` · ${q.title}` : ""}</Link></td>
                 <td>{(c as { name: string } | null)?.name ?? "—"}</td>
-                <td><Badge>{QUOTE_STATUS_LABEL[q.status as QuoteStatus]}</Badge></td>
+                <td><StatusBadge status={q.status as QuoteStatus} /></td>
                 <td className="text-right">{formatEur(q.total_cents as number)}</td>
               </tr>
             );

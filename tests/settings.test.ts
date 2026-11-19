@@ -26,7 +26,7 @@ describe("org settings parsing", () => {
   });
   it("keeps valid sections even when another one is corrupt", () => {
     const s = parseOrgSettings({ quotes: { default_vat_rate: 10, default_validity_days: 15 }, ai: { context: 123, tone: "bogus" }, email: { signature: "Cordiali saluti" } });
-    expect(s.quotes).toEqual({ default_vat_rate: 10, default_validity_days: 15 });
+    expect(s.quotes).toMatchObject({ default_vat_rate: 10, default_validity_days: 15, pdf_template: "classic" });
     expect(s.ai).toEqual({ context: "", tone: "concise" });
     expect(s.email.signature).toBe("Cordiali saluti");
   });

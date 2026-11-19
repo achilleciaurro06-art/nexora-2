@@ -28,7 +28,12 @@ export const orgSettingsSchema = z.object({
   quotes: z.object({
     default_vat_rate: z.number().min(0).max(100).default(22),
     default_validity_days: z.number().int().min(0).max(365).default(30),
-  }).default({ default_vat_rate: 22, default_validity_days: 30 }),
+    pdf_template: z.enum(["classic", "minimal"]).default("classic"),
+    pdf_accent: z.enum(["indigo", "green", "slate", "orange", "red"]).default("indigo"),
+    pdf_show_logo: z.boolean().default(true),
+    pdf_show_payment: z.boolean().default(true),
+    pdf_show_brand: z.boolean().default(true),
+  }).default({ default_vat_rate: 22, default_validity_days: 30, pdf_template: "classic", pdf_accent: "indigo", pdf_show_logo: true, pdf_show_payment: true, pdf_show_brand: true }),
   ai: z.object({
     context: text(1500),
     tone: z.enum(["concise", "detailed"]).default("concise"),

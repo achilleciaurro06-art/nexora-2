@@ -61,3 +61,21 @@ Superati: 74 test unitari (11 file), 98 controlli SQL su RLS/ruoli/isolamento/no
 - **Nessun nuovo servizio a pagamento.** Nessun provider o modello AI cambiato (resta `gemini-3.5-flash-lite`, riserva configurabile `GEMINI_FALLBACK_MODEL`).
 - **Costo AI:** la richiesta media del Copilot passa da ~1.000–2.000 a ~4.000–8.000 token in ingresso (contesto fino a ~14.000 caratteri); le analisi prezzi consumano token solo se ci sono ≥3 voci simili; le analisi di Word/Excel inviano il testo (fino a 60.000 caratteri). Tutto è conteggiato nelle quote per organizzazione.
 - **Per le email (se le vorrai):** serve un servizio di invio transazionale (es. Resend, Postmark) con dominio verificato e chiave API; i costi vanno verificati al momento della scelta. Non introdotto senza la tua approvazione.
+
+---
+
+## Aggiornamento – Fase 2: Preventivi completi (branch `feature/completamento-funzionale-v2`, NON in produzione)
+
+**Fatto e verificato (DB, unit, E2E in browser):**
+- **Duplicazione** (`duplicate_quote`): nuova bozza con nuovo numero, data odierna, validità predefinita, righe e totali copiati; l'originale resta intatto; si apre in modifica. Permessi come la creazione (visualizzatori e altre organizzazioni esclusi).
+- **Badge di stato colorato** (`StatusBadge`) in elenco preventivi, scheda preventivo, scheda cliente e Promemoria; il testo resta sempre presente.
+- **Numerazione configurabile** (Impostazioni → Preventivi): prefisso, 3–8 cifre, con/senza anno e ripartenza annuale; anteprima; «prossimo numero» (mai indietro rispetto ai numeri emessi, solo titolare/amministratori). I preventivi già emessi non cambiano numero; nessun buco né duplicato (contatore atomico esistente).
+- **Opzioni PDF**: modello classico/essenziale, colore, mostra/nascondi logo, dati di pagamento, marchio NEXORA.
+- **Storico revisioni** (`quote_revisions`): una revisione per ogni salvataggio che cambia i contenuti (righe incluse; più scritture nella stessa transazione si fondono; salvataggi senza differenze e cambi di stato non generano revisioni); riepilogo leggibile («Modificato: oggetto, righe»); in sola lettura, non falsificabile né cancellabile.
+- **Fatturato registrato** (`quote_billings`, decisione D1): importi realmente fatturati registrabili solo su preventivi accettati; scheda con valore preventivo / fatturato / da fatturare; evento in timeline e audit; KPI «Fatturato registrato» in dashboard (distinto dal valore dei preventivi). Rimozione solo titolare/amministratori.
+
+**Migrazione:** `20261119000017_quotes_complete.sql` (additiva; sostituisce solo le funzioni interne `quotes_assign_number` e `activity_trigger`; crea la revisione iniziale dei preventivi esistenti). Da applicare in ordine dopo la 016, **non applicata in produzione**.
+
+**Test:** 143 controlli SQL (+25 nuovi in `40_quotes_complete.sql`), 102 unit (+17), 42 E2E (+7), tsc/eslint/build puliti. I test SQL hanno trovato e fatto correggere un errore reale della migrazione prima del rilascio.
+
+**Limiti noti:** le revisioni registrano lo storico ma non c'è (ancora) «ripristina questa versione»; il fatturato è inserito a mano (nessuna integrazione con la fatturazione elettronica); il prossimo numero effettivo non è leggibile da interfaccia (il contatore è privato) — dopo l'impostazione viene mostrato l'esito.

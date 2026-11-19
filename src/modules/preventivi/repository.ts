@@ -32,6 +32,21 @@ export async function saveQuote(db: SupabaseClient, orgId: string, quoteId: stri
   });
 }
 
+export type Revision = { id: string; version: number; summary: string; created_at: string; created_by: string | null };
+export type Billing = { id: string; amount_cents: number; billed_at: string; reference: string | null; note: string | null; created_at: string; created_by: string | null };
+
+export async function listRevisions(db: SupabaseClient, orgId: string, quoteId: string): Promise<Revision[]> {
+  const { data } = await db.from("quote_revisions").select("id, version, summary, created_at, created_by")
+    .eq("organization_id", orgId).eq("quote_id", quoteId).order("version", { ascending: false }).limit(50);
+  return (data ?? []) as Revision[];
+}
+
+export async function listBillings(db: SupabaseClient, orgId: string, quoteId: string): Promise<Billing[]> {
+  const { data } = await db.from("quote_billings").select("id, amount_cents, billed_at, reference, note, created_at, created_by")
+    .eq("organization_id", orgId).eq("quote_id", quoteId).order("billed_at", { ascending: false }).order("created_at", { ascending: false });
+  return (data ?? []) as Billing[];
+}
+
 export async function setQuoteStatus(db: SupabaseClient, orgId: string, id: string, status: QuoteStatus) {
   return db.from("quotes").update({ status }).eq("organization_id", orgId).eq("id", id);
 }

@@ -8,7 +8,7 @@ import { fail, type ActionResult } from "@/lib/result";
 import { fieldErrors } from "@/lib/forms";
 import {
   LOGO_MAX_BYTES, LOGO_TYPES, aiSettingsSchema, appearanceSchema, companySchema, emailSettingsSchema, notificationPrefsSchema,
-  profileSchema, quoteSettingsSchema, quoteTextsSchema,
+  profileSchema, quoteSettingsSchema, quoteTextsSchema, quoteNumberingSchema, nextQuoteNumberSchema,
 } from "./schemas";
 import { AVATAR_MAX_BYTES, AVATAR_TYPES, NOTIFICATION_KINDS, mergeOrgSettings, parseUserPrefs, sniffImage, type OrgSettings } from "./settings";
 
@@ -80,6 +80,27 @@ export async function updateQuoteSettingsAction(_prev: ActionResult | null, form
   if (error) return fail("Impossibile salvare le condizioni");
   revalidatePath("/impostazioni/preventivi"); revalidatePath("/preventivi", "layout");
   return { ok: true };
+}
+
+export async function updateQuoteNumberingAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  const ctx = await requirePermission("settings:manage");
+  const parsed = quoteNumberingSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fail(firstError(parsed.error));
+  const { error } = await (await createClient()).from("organizations").update({ quote_numbering: parsed.data }).eq("id", ctx.org.organizationId);
+  if (error) return fail("Impossibile salvare la numerazione");
+  revalidatePath("/impostazioni/preventivi");
+  return { ok: true };
+}
+
+/** Imposta il prossimo numero: la funzione SQL non permette mai di tornare indietro rispetto ai numeri già emessi. */
+export async function setNextQuoteNumberAction(_prev: ActionResult<string> | null, formData: FormData): Promise<ActionResult<string>> {
+  const ctx = await requirePermission("settings:manage");
+  const parsed = nextQuoteNumberSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fail(firstError(parsed.error));
+  const { data, error } = await (await createClient()).rpc("set_quote_next_number", { p_org: ctx.org.organizationId, p_next: parsed.data.next, p_year: null });
+  if (error) return fail("Impossibile impostare il numero");
+  revalidatePath("/impostazioni/preventivi");
+  return { ok: true, data: `Il prossimo preventivo avrà il numero progressivo ${data}${data !== parsed.data.next ? " (non si può tornare indietro rispetto ai numeri già usati)" : ""}` };
 }
 
 export async function updateAiSettingsAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
