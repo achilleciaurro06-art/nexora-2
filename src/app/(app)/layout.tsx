@@ -6,11 +6,17 @@ import { logoutAction, switchOrganizationAction } from "@/modules/auth/actions";
 import { Nav } from "@/components/layout/nav";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
+import { Avatar } from "@/components/ui/avatar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireContext();
   const admin = await isPlatformAdmin(ctx.userId).catch(() => false);
-  const unread = await refreshAndCountUnread(await createClient(), ctx.userId).catch(() => 0);
+  const db = await createClient();
+  const [unread, { data: prof }] = await Promise.all([
+    refreshAndCountUnread(db, ctx.userId).catch(() => 0),
+    db.from("profiles").select("avatar_path").eq("id", ctx.userId).maybeSingle(),
+  ]);
+  const avatarUrl = prof?.avatar_path ? (await db.storage.from("avatars").createSignedUrl(prof.avatar_path as string, 3600)).data?.signedUrl : null;
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[220px_1fr]">
       <aside className="no-print border-b border-border bg-card p-4 md:border-b-0 md:border-r">
@@ -31,7 +37,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </Link>
         <Nav isPlatformAdmin={admin} />
         <form action={logoutAction} className="mt-6">
-          <p className="mb-2 truncate text-xs text-muted">{ctx.fullName ?? ctx.email}</p>
+          <Link href="/impostazioni/profilo" className="mb-2 flex items-center gap-2 rounded-md p-1 hover:bg-border/50" aria-label="Il tuo profilo">
+            <Avatar name={ctx.fullName ?? ctx.email} url={avatarUrl} size={28} />
+            <span className="truncate text-xs text-muted">{ctx.fullName ?? ctx.email}</span>
+          </Link>
           <Button variant="outline" size="sm" className="w-full">Esci</Button>
         </form>
       </aside>

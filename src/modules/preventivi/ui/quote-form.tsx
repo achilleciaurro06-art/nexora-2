@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { Alert } from "@/components/ui/card";
 import { formatEur, quoteTotals } from "@/lib/money";
 import type { ActionResult } from "@/lib/result";
+import { useFormAction } from "@/lib/use-form-action";
 
 type Action = (prev: ActionResult | null, formData: FormData) => Promise<ActionResult>;
 export type Line = { description: string; quantity: string; price: string; discount: string; vat: string };
@@ -16,16 +17,16 @@ export type QuoteFormInitial = {
   items?: LineItemInput[];
 };
 
-export const emptyLine = (): Line => ({ description: "", quantity: "1", price: "0", discount: "0", vat: "22" });
+export const emptyLine = (vat = "22"): Line => ({ description: "", quantity: "1", price: "0", discount: "0", vat });
 const num = (s: string) => {
   const n = Number(s.replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 };
 
-export function linesFromItems(items: LineItemInput[] | undefined): Line[] {
+export function linesFromItems(items: LineItemInput[] | undefined, defaultVat = "22"): Line[] {
   return items?.length
     ? items.map((i) => ({ description: i.description, quantity: String(i.quantity), price: (i.unit_price_cents / 100).toFixed(2), discount: String(i.discount_percent), vat: String(i.vat_rate) }))
-    : [emptyLine()];
+    : [emptyLine(defaultVat)];
 }
 export function linesToPayload(lines: Line[]) {
   return lines.map((l) => ({
@@ -35,7 +36,7 @@ export function linesToPayload(lines: Line[]) {
 }
 
 /** Editor righe + totali, condiviso tra preventivo e revisione dei documenti. */
-export function QuoteLinesEditor({ lines, onChange }: { lines: Line[]; onChange: (l: Line[]) => void }) {
+export function QuoteLinesEditor({ lines, onChange, defaultVat = "22" }: { lines: Line[]; onChange: (l: Line[]) => void; defaultVat?: string }) {
   const totals = quoteTotals(linesToPayload(lines));
   const update = (i: number, patch: Partial<Line>) => onChange(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
   return (
@@ -57,7 +58,7 @@ export function QuoteLinesEditor({ lines, onChange }: { lines: Line[]; onChange:
             </Button>
           </div>
         ))}
-        <Button type="button" variant="outline" size="sm" onClick={() => onChange([...lines, emptyLine()])}><Plus size={14} /> Aggiungi riga</Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => onChange([...lines, emptyLine(defaultVat)])}><Plus size={14} /> Aggiungi riga</Button>
       </div>
       <dl className="ml-auto grid max-w-xs grid-cols-2 gap-1 text-sm">
         <dt className="text-muted">Imponibile</dt><dd className="text-right">{formatEur(totals.subtotalCents)}</dd>
@@ -68,14 +69,14 @@ export function QuoteLinesEditor({ lines, onChange }: { lines: Line[]; onChange:
   );
 }
 
-export function QuoteForm({ action, customers, initial }: { action: Action; customers: { id: string; name: string }[]; initial?: QuoteFormInitial }) {
-  const [state, formAction, pending] = useActionState(action, null);
-  const [lines, setLines] = useState<Line[]>(linesFromItems(initial?.items));
+export function QuoteForm({ action, customers, initial, defaultVat = "22" }: { action: Action; customers: { id: string; name: string }[]; initial?: QuoteFormInitial; defaultVat?: string }) {
+  const { state, pending, onSubmit } = useFormAction(action);
+  const [lines, setLines] = useState<Line[]>(linesFromItems(initial?.items, defaultVat));
   const payload = useMemo(() => linesToPayload(lines), [lines]);
   const err = (k: string) => (state && !state.ok ? state.fieldErrors?.[k]?.[0] : undefined);
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form onSubmit={onSubmit} className="space-y-6">
       <input type="hidden" name="items" value={JSON.stringify(payload)} />
       <div className="grid max-w-4xl gap-4 sm:grid-cols-2">
         <div>
@@ -92,7 +93,7 @@ export function QuoteForm({ action, customers, initial }: { action: Action; cust
         <div><Label htmlFor="followUpDate">Promemoria follow-up</Label><Input id="followUpDate" name="followUpDate" type="date" defaultValue={initial?.followUpDate ?? ""} /></div>
       </div>
 
-      <QuoteLinesEditor lines={lines} onChange={setLines} />
+      <QuoteLinesEditor lines={lines} onChange={setLines} defaultVat={defaultVat} />
 
       <div className="grid max-w-4xl gap-4 sm:grid-cols-2">
         <div><Label htmlFor="notes">Note</Label><Textarea id="notes" name="notes" defaultValue={initial?.notes ?? ""} /></div>

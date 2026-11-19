@@ -18,17 +18,22 @@ async function newMemberPage(browser: Browser) {
 
 test("impostazioni aziendali: salvataggio e persistenza", async ({ page }) => {
   await page.goto("/impostazioni");
-  await page.getByLabel("Indirizzo").fill("Via Roma 1, 10100 Torino (TO)");
+  await expect(page).toHaveURL(/\/impostazioni\/azienda/);
+  await page.getByLabel("Indirizzo (sede operativa)").fill("Via Roma 1, 10100 Torino (TO)");
   await page.getByLabel("Codice fiscale").fill("01234567890");
   await page.getByLabel("Email", { exact: true }).fill("info@azienda-prova.it");
   await page.getByLabel("Telefono").fill("011 5550000");
   await page.getByLabel("Sito web").fill("https://www.azienda-prova.it");
-  await page.getByLabel("Condizioni predefinite dei preventivi").fill("Validità 30 giorni. Pagamento 50% all'ordine.");
-  await page.getByLabel("Informazioni a piè dei preventivi (PDF)").fill("Bonifico: IBAN IT60X0542811101000000123456");
-  await page.getByRole("button", { name: "Salva impostazioni" }).click();
-  await expect(page.getByText("Impostazioni salvate")).toBeVisible();
+  await page.getByRole("button", { name: "Salva" }).click();
+  await expect(page.getByText("Dati aziendali salvati")).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel("Indirizzo")).toHaveValue("Via Roma 1, 10100 Torino (TO)");
+  await expect(page.getByLabel("Indirizzo (sede operativa)")).toHaveValue("Via Roma 1, 10100 Torino (TO)");
+
+  await page.goto("/impostazioni/preventivi");
+  await page.getByLabel("Condizioni commerciali predefinite").fill("Validità 30 giorni. Pagamento 50% all'ordine.");
+  await page.getByLabel("Informazioni a piè dei preventivi (PDF)").fill("Bonifico: IBAN IT60X0542811101000000123456");
+  await page.getByRole("button", { name: "Salva" }).click();
+  await expect(page.getByText("Impostazioni dei preventivi salvate")).toBeVisible();
 });
 
 test("le condizioni predefinite precompilano i nuovi preventivi", async ({ page }) => {
@@ -37,7 +42,7 @@ test("le condizioni predefinite precompilano i nuovi preventivi", async ({ page 
 });
 
 test("logo: caricamento (storage), anteprima e PDF ancora valido; file non immagine rifiutato", async ({ page }) => {
-  await page.goto("/impostazioni");
+  await page.goto("/impostazioni/azienda");
   await page.locator("#logo").setInputFiles({ name: "finto.png", mimeType: "image/png", buffer: Buffer.from("non sono un'immagine") });
   await page.getByRole("button", { name: "Carica logo" }).click();
   await expect(page.getByText("Il file non è un'immagine valida")).toBeVisible();
@@ -122,7 +127,8 @@ test("analisi dei prezzi senza storico: dichiara i dati insufficienti, senza inv
 });
 
 test("team: invito di un collaboratore e accettazione", async ({ page, browser }) => {
-  await page.goto("/organizzazione");
+  await page.goto("/organizzazione"); // reindirizza alle Impostazioni → Team
+  await expect(page).toHaveURL(/\/impostazioni\/team/);
   await page.getByLabel("Email da invitare").fill(MEMBER.email);
   await page.getByLabel("Ruolo").selectOption("member");
   await page.getByRole("button", { name: "Crea invito" }).click();
@@ -149,11 +155,11 @@ test("il collaboratore (ruolo membro) non vede né può usare le funzioni riserv
   await expect(p.getByRole("button", { name: "Elimina" })).toHaveCount(0);
   await p.goto("/preventivi");
   await expect(p.getByRole("button", { name: "Elimina" })).toHaveCount(0);
-  await p.goto("/organizzazione");
+  await p.goto("/impostazioni/team");
   await expect(p.getByLabel("Email da invitare")).toHaveCount(0);
-  await p.goto("/impostazioni");
-  await expect(p.getByLabel("Indirizzo")).toBeDisabled();
-  await expect(p.getByRole("button", { name: "Salva impostazioni" })).toHaveCount(0);
+  await p.goto("/impostazioni/azienda");
+  await expect(p.getByLabel("Indirizzo (sede operativa)")).toBeDisabled();
+  await expect(p.getByRole("button", { name: "Salva" })).toHaveCount(0);
   const res = await p.goto("/admin");
   expect(res?.status()).toBe(404);
   await ctx.close();
@@ -263,7 +269,7 @@ test("console di piattaforma: quota AI e registro delle azioni; nessun dato comm
   const quota = p.getByLabel(/Limite token Azienda Prova/);
   await quota.fill("500000");
   await quota.locator("xpath=ancestor::form").getByRole("button", { name: "Salva" }).click();
-  await expect(p.getByText("set_ai_quota")).toBeVisible();
+  await expect(p.getByRole("cell", { name: "set_ai_quota" }).first()).toBeVisible();
   await expect(p.getByText("Rossi Costruzioni")).toHaveCount(0); // nessun dato commerciale delle aziende
   await ctx.close();
 });

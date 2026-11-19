@@ -304,6 +304,47 @@ select tl3.check('every member has a profile and the relationship is declared (n
   select count(*) = 0 from public.memberships m where not exists (select 1 from public.profiles p where p.id = m.user_id))
   and exists (select 1 from pg_constraint where conname = 'memberships_user_profile_fkey'));
 
+-- ---------------------------------------------------------------- impostazioni e profilo (migrazione 16)
+set local role authenticated;
+set local request.jwt.claim.sub = 'a3000000-0000-0000-0000-00000000000a';
+update public.organizations set pec = 'alfa@pec.it', legal_address = 'Via Legale 2, Torino', bank_name = 'Banca Prova', iban = 'IT60X0542811101000000123456' where id = :'oa';
+select tl3.check('owner saves the extended company data', (select iban from public.organizations where id = :'oa') = 'IT60X0542811101000000123456');
+update public.profiles set job_title = 'Titolare', preferences = '{"appearance":{"dashboard_range":"90"}}' where id = 'a3000000-0000-0000-0000-00000000000a';
+select tl3.check('a user updates own profile and preferences', (select job_title from public.profiles where id = 'a3000000-0000-0000-0000-00000000000a') = 'Titolare');
+select tl3.denies('avatar path must be in the own folder',
+  $$update public.profiles set avatar_path = 'b3000000-0000-0000-0000-00000000000b/x.png' where id = 'a3000000-0000-0000-0000-00000000000a'$$);
+select tl3.denies('preferences must be a small object', $$update public.profiles set preferences = '[1]' where id = 'a3000000-0000-0000-0000-00000000000a'$$);
+select tl3.check('a user cannot edit another profile',
+  tl3.affected($$update public.profiles set job_title = 'x' where id = 'a3000000-0000-0000-0000-0000000000a2'$$) = 0);
+insert into storage.objects (bucket_id, name) values ('avatars', 'a3000000-0000-0000-0000-00000000000a/avatar.png');
+select tl3.denies('cannot write into someone else''s avatar folder',
+  $$insert into storage.objects (bucket_id, name) values ('avatars', 'a3000000-0000-0000-0000-0000000000a2/avatar.png')$$);
+reset role;
+set local role authenticated;
+set local request.jwt.claim.sub = 'a3000000-0000-0000-0000-0000000000a2';
+select tl3.check('a colleague of the same organization can see the avatar', (select count(*) from storage.objects where bucket_id = 'avatars') = 1);
+reset role;
+set local role authenticated;
+set local request.jwt.claim.sub = 'b3000000-0000-0000-0000-00000000000b';
+select tl3.check('another organization cannot see the avatar', (select count(*) from storage.objects where bucket_id = 'avatars') = 0);
+reset role;
+
+-- preferenze di notifica: disattivare un tipo e restringere la finestra di "in scadenza"
+delete from public.notifications where user_id = 'a3000000-0000-0000-0000-0000000000a2';
+update public.profiles set preferences = '{"notifications":{"task_overdue":false,"task_assigned":false,"quote_followup":false,"reminder":false,"due_soon_hours":6}}'
+  where id = 'a3000000-0000-0000-0000-0000000000a2';
+set local role authenticated;
+set local request.jwt.claim.sub = 'a3000000-0000-0000-0000-0000000000a2';
+select tl3.check('with kinds disabled and a 6h window, a task due in 12h produces nothing', public.refresh_my_notifications() = 0);
+reset role;
+update public.profiles set preferences = '{"notifications":{"task_overdue":false,"task_assigned":false,"quote_followup":false,"reminder":false,"due_soon_hours":48}}'
+  where id = 'a3000000-0000-0000-0000-0000000000a2';
+set local role authenticated;
+set local request.jwt.claim.sub = 'a3000000-0000-0000-0000-0000000000a2';
+select tl3.check('a 48h window makes the 12h task notify, and only that kind', public.refresh_my_notifications() = 1);
+reset role;
+select tl3.check('only the enabled kind was created', (select array_agg(distinct kind) from public.notifications where user_id = 'a3000000-0000-0000-0000-0000000000a2') = array['task_due_soon']);
+
 -- ---------------------------------------------------------------- RLS ovunque (tabelle nuove incluse)
 select tl3.check('every table in public/private has RLS enabled', (
   select count(*) = 0 from pg_class c join pg_namespace n on n.oid = c.relnamespace

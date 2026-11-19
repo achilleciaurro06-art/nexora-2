@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
 import { Alert, Badge } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { decideSuggestionAction } from "../actions";
+import { useFormAction } from "@/lib/use-form-action";
 
 export type SuggestionView = {
   id: string; kind: string; canDecide: boolean;
@@ -21,13 +21,13 @@ const APPLY: Record<string, string> = {
 };
 
 export function SuggestionCard({ s }: { s: SuggestionView }) {
-  const [state, action, pending] = useActionState(decideSuggestionAction.bind(null, s.id), null);
+  const { state, pending, onSubmit } = useFormAction(decideSuggestionAction.bind(null, s.id));
   const f = s.fields;
   if (state?.ok) return <li className="rounded-md border border-border p-3 text-sm text-muted">Fatto.</li>;
   return (
     <li className="rounded-md border border-border p-3 text-sm">
       <Badge>{LABEL[s.kind] ?? s.kind}</Badge>
-      <form action={action} className="mt-2 space-y-2">
+      <form onSubmit={onSubmit} className="mt-2 space-y-2">
         {s.kind === "quote_draft" && s.draft ? (
           <div className="space-y-1">
             <p><strong>Cliente:</strong> {s.draft.client || "— (da scegliere)"}</p>

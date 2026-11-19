@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { Alert } from "@/components/ui/card";
 import type { ActionResult } from "@/lib/result";
 import { PRIORITY_LABEL, STATUS_LABEL } from "../schemas";
+import { useFormAction } from "@/lib/use-form-action";
 
 type Action = (prev: ActionResult | null, formData: FormData) => Promise<ActionResult>;
 export type TaskDefaults = {
@@ -18,13 +19,13 @@ export function TaskEditor({ action, defaults, customers, quotes, members, mode,
   action: Action; defaults?: TaskDefaults; customers: { id: string; name: string }[]; quotes: QuoteOption[];
   members: { userId: string; name: string }[]; mode: "create" | "edit"; readOnly?: boolean;
 }) {
-  const [state, formAction, pending] = useActionState(action, null);
+  const { state, pending, onSubmit } = useFormAction(action);
   const [customerId, setCustomerId] = useState(defaults?.customerId ?? "");
   const visibleQuotes = useMemo(() => (customerId ? quotes.filter((q) => q.customer_id === customerId) : quotes), [quotes, customerId]);
   const err = (k: string) => (state && !state.ok ? state.fieldErrors?.[k]?.[0] : undefined);
 
   return (
-    <form action={formAction} className="grid max-w-3xl gap-4 sm:grid-cols-2">
+    <form onSubmit={onSubmit} className="grid max-w-3xl gap-4 sm:grid-cols-2">
       {mode === "create" && <input type="hidden" name="redirect" value="detail" />}
       <div className="sm:col-span-2">
         <Label htmlFor="title">Titolo *</Label>

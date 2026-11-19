@@ -7,6 +7,7 @@ import { ADMIN, createAuthUser, sql } from "./helpers";
 export default async function globalSetup() {
   sql(`delete from public.organizations`); // cascata su tutti i dati aziendali (verifica anche la cancellazione di un'organizzazione)
   sql(`delete from private.activation_codes`);
+  sql(`delete from private.platform_audit`);
   sql(`delete from auth.users where email <> '${ADMIN.email}'`);
   const id = await createAuthUser(ADMIN.email, ADMIN.password, ADMIN.name);
   sql(`insert into private.platform_admins (user_id) values ('${id}') on conflict do nothing`);

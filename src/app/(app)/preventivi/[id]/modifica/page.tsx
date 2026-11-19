@@ -7,6 +7,7 @@ import { getQuote } from "@/modules/preventivi/repository";
 import { PageHeader } from "@/components/ui/card";
 import { QuoteForm } from "@/modules/preventivi/ui/quote-form";
 import { saveQuoteAction } from "@/modules/preventivi/actions";
+import { parseOrgSettings } from "@/modules/impostazioni/settings";
 
 export const metadata = { title: "Modifica preventivo" };
 
@@ -19,11 +20,12 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
   if (!found) notFound();
   if (found.quote.status !== "draft") redirect(`/preventivi/${id}`);
   const customers = await listCustomers(db, ctx.org.organizationId);
+  const { data: org } = await db.from("organizations").select("settings").eq("id", ctx.org.organizationId).maybeSingle();
   const { quote, items } = found;
   return (
     <>
       <PageHeader title={`Modifica ${quote.number}`} />
-      <QuoteForm action={saveQuoteAction.bind(null, id)} customers={customers.map((c) => ({ id: c.id, name: c.name }))}
+      <QuoteForm action={saveQuoteAction.bind(null, id)} defaultVat={String(parseOrgSettings(org?.settings).quotes.default_vat_rate)} customers={customers.map((c) => ({ id: c.id, name: c.name }))}
         initial={{ customerId: quote.customer_id, title: quote.title, issueDate: quote.issue_date, validUntil: quote.valid_until, followUpDate: quote.follow_up_date, notes: quote.notes, terms: quote.terms, items }} />
     </>
   );

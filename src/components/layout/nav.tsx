@@ -12,7 +12,6 @@ const ITEMS = [
   { href: "/promemoria", label: "Promemoria" },
   { href: "/documenti", label: "Documenti" },
   { href: "/copilot", label: "Copilot AI" },
-  { href: "/organizzazione", label: "Organizzazione" },
   { href: "/impostazioni", label: "Impostazioni" },
 ];
 

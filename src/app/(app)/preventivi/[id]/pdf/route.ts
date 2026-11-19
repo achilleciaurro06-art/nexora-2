@@ -14,7 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const found = await getQuote(db, ctx.org.organizationId, id);
   if (!found) return NextResponse.json({ error: "Non trovato" }, { status: 404 });
   const { data: org } = await db.from("organizations")
-    .select("name, vat_number, tax_code, address, email, phone, website, logo_path, quote_footer")
+    .select("name, vat_number, tax_code, address, legal_address, email, pec, phone, website, logo_path, quote_footer, bank_name, iban")
     .eq("id", ctx.org.organizationId).maybeSingle();
   let logo: { bytes: Uint8Array; type: "png" | "jpg" } | null = null;
   if (org?.logo_path) {
@@ -31,6 +31,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       name: (org?.name as string | undefined) ?? ctx.org.name, vatNumber: (org?.vat_number as string | null) ?? null,
       taxCode: (org?.tax_code as string | null) ?? null, address: (org?.address as string | null) ?? null, email: (org?.email as string | null) ?? null,
       phone: (org?.phone as string | null) ?? null, website: (org?.website as string | null) ?? null, footer: (org?.quote_footer as string | null) ?? null, logo,
+      legalAddress: (org?.legal_address as string | null) ?? null, pec: (org?.pec as string | null) ?? null, bankName: (org?.bank_name as string | null) ?? null, iban: (org?.iban as string | null) ?? null,
     },
     quote: {
       number: quote.number, title: quote.title, status: quote.status, issueDate: quote.issue_date, validUntil: quote.valid_until,

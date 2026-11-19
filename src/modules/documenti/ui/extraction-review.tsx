@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { Alert, Badge } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { QuoteLinesEditor, linesToPayload, type Line } from "@/modules/preventiv
 import { formatEur, quoteTotals } from "@/lib/money";
 import type { ActionResult } from "@/lib/result";
 import { fieldLabel, type Duplicate } from "../extraction";
+import { useFormAction } from "@/lib/use-form-action";
 
 type Action = (prev: ActionResult | null, formData: FormData) => Promise<ActionResult>;
 
@@ -29,7 +30,7 @@ export type ReviewProps = {
 const Inferred = ({ path, list }: { path: string; list: string[] }) => (list.includes(path) ? <Badge className="ml-2 border-amber-500 text-amber-600">dedotto</Badge> : null);
 
 export function ExtractionReview(p: ReviewProps) {
-  const [state, formAction, pending] = useActionState(p.action, null);
+  const { state, pending, onSubmit } = useFormAction(p.action);
   const [mode, setMode] = useState<"existing" | "new">(p.match || !p.client.name ? "existing" : "new");
   const [lines, setLines] = useState<Line[]>(p.initialLines);
   const payload = useMemo(() => linesToPayload(lines), [lines]);
@@ -38,7 +39,7 @@ export function ExtractionReview(p: ReviewProps) {
   const err = (k: string) => (state && !state.ok ? state.fieldErrors?.[k]?.[0] : undefined);
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form onSubmit={onSubmit} className="space-y-6">
       <input type="hidden" name="items" value={JSON.stringify(payload)} />
 
       {(p.warnings.length > 0 || p.duplicates.length > 0 || p.missing.length > 0 || p.aiNotes) && (

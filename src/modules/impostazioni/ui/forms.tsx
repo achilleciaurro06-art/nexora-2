@@ -1,54 +1,41 @@
 "use client";
 
-import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input, Label, Textarea } from "@/components/ui/input";
+import { Input, Label } from "@/components/ui/input";
 import { Alert } from "@/components/ui/card";
-import { updateOrganizationProfileAction, uploadLogoAction } from "../actions";
+import type { ActionResult } from "@/lib/result";
+import { uploadAvatarAction, uploadLogoAction } from "../actions";
+import { useFormAction } from "@/lib/use-form-action";
 
-export type OrgProfile = {
-  name: string; vat_number: string | null; tax_code: string | null; address: string | null; email: string | null; phone: string | null;
-  website: string | null; quote_footer: string | null; quote_default_terms: string | null;
-};
+type Action = (prev: ActionResult | null, formData: FormData) => Promise<ActionResult>;
 
-export function ProfileForm({ org, readOnly }: { org: OrgProfile; readOnly: boolean }) {
-  const [state, action, pending] = useActionState(updateOrganizationProfileAction, null);
-  const err = (k: string) => (state && !state.ok ? state.fieldErrors?.[k]?.[0] : undefined);
-  const f = (k: keyof OrgProfile) => ({ name: k, id: k, defaultValue: org[k] ?? "", disabled: readOnly });
+/** Modulo generico delle impostazioni: i campi arrivano come figli (server component), l'esito si mostra qui. */
+export function ActionForm({ action, children, submitLabel = "Salva", readOnly = false, successMessage = "Salvato" }: {
+  action: Action; children: React.ReactNode; submitLabel?: string; readOnly?: boolean; successMessage?: string;
+}) {
+  const { state, pending, onSubmit } = useFormAction(action);
   return (
-    <form action={action} className="grid max-w-3xl gap-4 sm:grid-cols-2">
-      <div className="sm:col-span-2"><Label htmlFor="name">Nome azienda *</Label><Input {...f("name")} required />{err("name") && <p className="mt-1 text-xs text-danger">{err("name")}</p>}</div>
-      <div><Label htmlFor="vat_number">Partita IVA</Label><Input {...f("vat_number")} /></div>
-      <div><Label htmlFor="tax_code">Codice fiscale</Label><Input {...f("tax_code")} /></div>
-      <div className="sm:col-span-2"><Label htmlFor="address">Indirizzo</Label><Input {...f("address")} /></div>
-      <div><Label htmlFor="email">Email</Label><Input {...f("email")} type="email" />{err("email") && <p className="mt-1 text-xs text-danger">{err("email")}</p>}</div>
-      <div><Label htmlFor="phone">Telefono</Label><Input {...f("phone")} /></div>
-      <div className="sm:col-span-2"><Label htmlFor="website">Sito web</Label><Input {...f("website")} placeholder="https://www.esempio.it" />{err("website") && <p className="mt-1 text-xs text-danger">{err("website")}</p>}</div>
-      <div className="sm:col-span-2">
-        <Label htmlFor="quote_default_terms">Condizioni predefinite dei preventivi</Label>
-        <Textarea {...f("quote_default_terms")} placeholder="Es. Validità 30 giorni. Pagamento 50% all'ordine, saldo alla consegna." />
-        <p className="mt-1 text-xs text-muted">Precompilate nei nuovi preventivi (modificabili caso per caso).</p>
-      </div>
-      <div className="sm:col-span-2">
-        <Label htmlFor="quote_footer">Informazioni a piè dei preventivi (PDF)</Label>
-        <Textarea {...f("quote_footer")} placeholder="Es. IBAN, coordinate di pagamento, note legali." />
-      </div>
+    <form onSubmit={onSubmit} className="grid max-w-3xl gap-4 sm:grid-cols-2">
+      {children}
       {state && !state.ok && <div className="sm:col-span-2"><Alert>{state.error}</Alert></div>}
-      {state?.ok && <div className="sm:col-span-2"><Alert kind="success">Impostazioni salvate</Alert></div>}
-      {!readOnly && <div className="sm:col-span-2"><Button disabled={pending}>{pending ? "Salvataggio…" : "Salva impostazioni"}</Button></div>}
+      {state?.ok && <div className="sm:col-span-2"><Alert kind="success">{successMessage}</Alert></div>}
+      {!readOnly && <div className="sm:col-span-2"><Button disabled={pending}>{pending ? "Salvataggio…" : submitLabel}</Button></div>}
     </form>
   );
 }
 
-export function LogoForm() {
-  const [state, action, pending] = useActionState(uploadLogoAction, null);
+function UploadForm({ action, field, label, accept, button, success }: { action: Action; field: string; label: string; accept: string; button: string; success: string }) {
+  const { state, pending, onSubmit } = useFormAction(action);
   return (
-    <form action={action} className="space-y-2">
-      <Label htmlFor="logo">Carica un nuovo logo (PNG o JPEG, max 1 MB)</Label>
-      <Input id="logo" name="logo" type="file" accept="image/png,image/jpeg" required className="h-auto py-1.5" />
+    <form onSubmit={onSubmit} className="space-y-2">
+      <Label htmlFor={field}>{label}</Label>
+      <Input id={field} name={field} type="file" accept={accept} required className="h-auto py-1.5" />
       {state && !state.ok && <Alert>{state.error}</Alert>}
-      {state?.ok && <Alert kind="success">Logo aggiornato</Alert>}
-      <Button variant="outline" disabled={pending}>{pending ? "Carico…" : "Carica logo"}</Button>
+      {state?.ok && <Alert kind="success">{success}</Alert>}
+      <Button variant="outline" disabled={pending}>{pending ? "Carico…" : button}</Button>
     </form>
   );
 }
+
+export const LogoForm = () => <UploadForm action={uploadLogoAction} field="logo" label="Carica un nuovo logo (PNG o JPEG, max 1 MB)" accept="image/png,image/jpeg" button="Carica logo" success="Logo aggiornato" />;
+export const AvatarForm = () => <UploadForm action={uploadAvatarAction} field="avatar" label="Carica un'immagine (PNG, JPEG o WebP, max 2 MB)" accept="image/png,image/jpeg,image/webp" button="Carica immagine" success="Immagine aggiornata" />;

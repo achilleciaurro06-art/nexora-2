@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAiProvider, userMessageForAiError } from "@/server/ai";
 import { estimateTokens, recordUsage, reserveTokens } from "@/server/ai/usage";
 import { buildContext } from "./context";
+import { parseOrgSettings } from "@/modules/impostazioni/settings";
 
 const MAX_OUTPUT = 1500;
 const iso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -76,8 +77,15 @@ export type CopilotResult =
 export async function askCopilot(args: {
   db: SupabaseClient; orgId: string; userId: string; userName: string | null; history: { role: "user" | "assistant"; content: string }[]; question: string;
 }): Promise<CopilotResult> {
-  const ctx = await buildContext({ db: args.db, orgId: args.orgId, userId: args.userId, userName: args.userName, question: args.question });
-  const system = `${SYSTEM}\n\n<DATI_AZIENDA>\n${ctx.text}\n</DATI_AZIENDA>`;
+  const [ctx, { data: org }] = await Promise.all([
+    buildContext({ db: args.db, orgId: args.orgId, userId: args.userId, userName: args.userName, question: args.question }),
+    args.db.from("organizations").select("settings").eq("id", args.orgId).maybeSingle(),
+  ]);
+  const ai = parseOrgSettings(org?.settings).ai;
+  const style = ai.tone === "detailed" ? "Stile richiesto dall'azienda: risposte dettagliate e argomentate." : "Stile richiesto dall'azienda: risposte brevi e dirette.";
+  // il contesto scritto dall'azienda è un dato (non attendibile quanto un'istruzione): serve solo a capire il business
+  const about = ai.context ? `\n\n<PROFILO_AZIENDA_SCRITTO_DALL_AZIENDA>\n${ai.context}\n</PROFILO_AZIENDA_SCRITTO_DALL_AZIENDA>` : "";
+  const system = `${SYSTEM}\n${style}${about}\n\n<DATI_AZIENDA>\n${ctx.text}\n</DATI_AZIENDA>`;
   const messages = [...args.history.slice(-8), { role: "user" as const, content: args.question }];
 
   const estimate = estimateTokens(system, ...messages.map((m) => m.content)) + MAX_OUTPUT;

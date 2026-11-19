@@ -5,6 +5,7 @@ export type QuotePdfData = {
   organization: {
     name: string; vatNumber?: string | null; taxCode?: string | null; address?: string | null; email?: string | null;
     phone?: string | null; website?: string | null; footer?: string | null;
+    legalAddress?: string | null; pec?: string | null; bankName?: string | null; iban?: string | null;
     logo?: { bytes: Uint8Array; type: "png" | "jpg" } | null;
   };
   quote: {
@@ -113,8 +114,9 @@ export async function buildQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
   else { text(org.name, margin, leftY - 10, { size: 20, font: bold, color: ACCENT }); leftY -= 26; }
   const orgLines = [
     org.address,
+    org.legalAddress && org.legalAddress !== org.address ? `Sede legale: ${org.legalAddress}` : null,
     [org.vatNumber && `P.IVA ${org.vatNumber}`, org.taxCode && `C.F. ${org.taxCode}`].filter(Boolean).join("  ·  "),
-    [org.email, org.phone, org.website].filter(Boolean).join("  ·  "),
+    [org.email, org.pec && `PEC ${org.pec}`, org.phone, org.website].filter(Boolean).join("  ·  "),
   ].filter((l): l is string => Boolean(l));
   for (const l of orgLines) for (const wl of wrap(l, font, 8.5, 300)) { text(wl, margin, leftY - 2, { size: 8.5, color: MUTED }); leftY -= 11; }
   textRight("PREVENTIVO", right, y - 6, { size: 11, font: bold, color: MUTED });
@@ -182,6 +184,12 @@ export async function buildQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
     y -= 10;
   }
 
+  if (org.iban || org.bankName) {
+    ensure(36);
+    text("Dati per il pagamento", margin, y, { size: 9, font: bold, color: MUTED }); y -= 14;
+    for (const l of wrap([org.bankName, org.iban && `IBAN ${org.iban}`].filter(Boolean).join(" — "), font, 9.5, right - margin)) { ensure(14); text(l, margin, y, { size: 9.5 }); y -= 12.5; }
+    y -= 8;
+  }
   if (org.footer) {
     ensure(30);
     text("Informazioni", margin, y, { size: 9, font: bold, color: MUTED }); y -= 14;

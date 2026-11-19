@@ -8,14 +8,16 @@ import { isoDayOffset } from "@/lib/dates";
 import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
 import { RANGES, countByMonth, monthBuckets, parseRange, periodSummary, quotesByMonth, rangeStart } from "@/modules/dashboard/metrics";
 import { TrendChart } from "@/modules/dashboard/trend-chart";
+import { parseUserPrefs } from "@/modules/impostazioni/settings";
 
 export const metadata = { title: "Dashboard" };
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
   const sp = await searchParams;
-  const range = parseRange(sp.range);
   const ctx = await requireContext();
   const db = await createClient();
+  const { data: prof } = await db.from("profiles").select("preferences").eq("id", ctx.userId).maybeSingle();
+  const range = parseRange(sp.range ?? parseUserPrefs(prof?.preferences).appearance.dashboard_range);
   const orgId = ctx.org.organizationId;
   const now = new Date();
   const start = rangeStart(range.days, now);

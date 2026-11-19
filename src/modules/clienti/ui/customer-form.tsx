@@ -1,20 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { Alert } from "@/components/ui/card";
 import type { ActionResult } from "@/lib/result";
 import type { Customer } from "@/types/domain";
+import { useFormAction } from "@/lib/use-form-action";
 
 type Action = (prev: ActionResult | null, formData: FormData) => Promise<ActionResult>;
 
 export function CustomerForm({ action, customer, readOnly }: { action: Action; customer?: Customer; readOnly?: boolean }) {
-  const [state, formAction, pending] = useActionState(action, null);
+  const { state, pending, onSubmit } = useFormAction(action);
   const err = (k: string) => (state && !state.ok ? state.fieldErrors?.[k]?.[0] : undefined);
   const f = (name: keyof Customer) => ({ name, id: name, defaultValue: (customer?.[name] as string | null) ?? "", disabled: readOnly });
   return (
-    <form action={formAction} className="grid max-w-3xl gap-4 sm:grid-cols-2">
+    <form onSubmit={onSubmit} className="grid max-w-3xl gap-4 sm:grid-cols-2">
       <div className="sm:col-span-2">
         <Label htmlFor="name">Ragione sociale / Nome *</Label>
         <Input {...f("name")} required />
