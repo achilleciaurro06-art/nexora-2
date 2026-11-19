@@ -14,7 +14,10 @@
     "test": "vitest run",
     "e2e": "playwright test --trace off",
     "db:test": "supabase/tests/run-local.sh",
-    "db:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_REF > src/types/database.ts"
+    "db:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_REF > src/types/database.ts",
+    "verify:up": "scripts/verify-stack/start.sh",
+    "verify:app": "scripts/verify-stack/run-app.sh",
+    "verify:down": "scripts/verify-stack/stop.sh"
   },
   "dependencies": {
     "@google/genai": "3.6.1",

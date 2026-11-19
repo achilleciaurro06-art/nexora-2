@@ -299,6 +299,11 @@ select tl3.check('timeline and audit record the removal', (
   from public.activity_events where customer_id = 'd3000000-0000-0000-0000-0000000000f1')
   and exists (select 1 from public.audit_logs where entity = 'customers' and entity_id = 'd3000000-0000-0000-0000-0000000000f1' and 'deleted_at' = any (changed_fields)));
 
+-- ---------------------------------------------------------------- relazione memberships -> profiles (migrazione 15)
+select tl3.check('every member has a profile and the relationship is declared (needed by the API embed)', (
+  select count(*) = 0 from public.memberships m where not exists (select 1 from public.profiles p where p.id = m.user_id))
+  and exists (select 1 from pg_constraint where conname = 'memberships_user_profile_fkey'));
+
 -- ---------------------------------------------------------------- RLS ovunque (tabelle nuove incluse)
 select tl3.check('every table in public/private has RLS enabled', (
   select count(*) = 0 from pg_class c join pg_namespace n on n.oid = c.relnamespace

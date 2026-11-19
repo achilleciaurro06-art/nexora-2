@@ -11,6 +11,8 @@ describe("money", () => {
   });
   it("formats euro cents", () => {
     expect(formatEur(1234567)).toContain("12.345,67");
+    expect(formatEur(109800)).toContain("1.098,00"); // anche a 4 cifre, coerente con i numeri più grandi
+    expect(formatEur(98765)).toContain("987,65");
   });
   it("matches the database formulas (same as RLS test fixture)", () => {
     // 2 x 100,00 con sconto 10% = 180,00 netto; 1 x 50,00 = 50,00 netto
