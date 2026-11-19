@@ -4,6 +4,8 @@ import { env } from "@/server/env";
 import { AiProviderError, type AiProvider, type AiRequest, type AiResponse } from "../provider";
 
 const RETRY_DELAYS_MS = [700, 1800];
+const CALL_TIMEOUT_MS = 20_000;
+const TOTAL_BUDGET_MS = 40_000; // sotto il limite di 60s della funzione
 
 function statusOf(err: unknown): number | undefined {
   const s = (err as { status?: unknown })?.status;
@@ -20,7 +22,8 @@ export class GeminiProvider implements AiProvider {
   async generate(req: AiRequest): Promise<AiResponse> {
     const e = env();
     if (!e.GEMINI_API_KEY) throw new AiProviderError("GEMINI_API_KEY non configurata", "auth");
-    const ai = new GoogleGenAI({ apiKey: e.GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: e.GEMINI_API_KEY, httpOptions: { timeout: CALL_TIMEOUT_MS } });
+    const startedAt = Date.now();
 
     const contents = req.messages.map((m, idx) => {
       const parts: ({ text: string } | { inlineData: { mimeType: string; data: string } })[] = [{ text: m.content }];
@@ -38,6 +41,9 @@ export class GeminiProvider implements AiProvider {
 
     for (const model of models) {
       for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+        if (Date.now() - startedAt > TOTAL_BUDGET_MS - CALL_TIMEOUT_MS) {
+          throw new AiProviderError(lastMessage || "tempo massimo raggiunto", "overloaded", lastStatus);
+        }
         try {
           const res = await ai.models.generateContent({
             model,

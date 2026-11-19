@@ -3,7 +3,7 @@ import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
 import { can } from "@/server/auth/permissions";
 import { SuggestionList, type SuggestionRow } from "@/modules/copilot/ui/suggestion-list";
-import { ChatForm } from "@/modules/copilot/ui/chat";
+import { ChatPanel, type ChatMessage } from "@/modules/copilot/ui/chat";
 import { Card, PageHeader } from "@/components/ui/card";
 
 export const metadata = { title: "Copilot AI" };
@@ -19,7 +19,8 @@ export default async function CopilotPage({ searchParams }: { searchParams: Prom
     db.from("ai_quotas").select("monthly_token_limit, tokens_used").eq("organization_id", orgId).maybeSingle(),
     db.from("ai_suggestions").select("id, kind, payload").eq("organization_id", orgId).eq("status", "pending").order("created_at", { ascending: false }).limit(10),
   ]);
-  const active = c ?? convs?.[0]?.id;
+  // ?c= vuoto = "nuova conversazione"; nessun parametro = ultima conversazione
+  const active = c === undefined ? (convs?.[0]?.id as string | undefined) : c || undefined;
   const { data: messages } = active
     ? await db.from("ai_messages").select("id, role, content").eq("organization_id", orgId).eq("conversation_id", active).order("created_at")
     : { data: [] };
@@ -39,17 +40,8 @@ export default async function CopilotPage({ searchParams }: { searchParams: Prom
             {(convs ?? []).map((v) => <li key={v.id as string} className="truncate"><Link className={`hover:underline ${v.id === active ? "font-medium" : "text-muted"}`} href={`/copilot?c=${v.id}`}>{(v.title as string) || "Senza titolo"}</Link></li>)}
           </ul>
         </Card>
-        <Card className="space-y-4">
-          <div className="max-h-[50dvh] space-y-3 overflow-y-auto" aria-live="polite">
-            {(messages ?? []).length === 0 && <p className="text-sm text-muted">Fai una domanda sui tuoi clienti, preventivi e attività.</p>}
-            {(messages ?? []).map((m) => (
-              <div key={m.id as string} className={m.role === "user" ? "ml-8 rounded-lg bg-primary/10 p-3 text-sm" : "mr-8 rounded-lg border border-border p-3 text-sm"}>
-                <p className="mb-1 text-xs text-muted">{m.role === "user" ? "Tu" : "Copilot"}</p>
-                <p className="whitespace-pre-wrap">{m.content as string}</p>
-              </div>
-            ))}
-          </div>
-          {canAi ? <ChatForm key={active ?? "new"} conversationId={c === "" ? undefined : active} /> : <p className="text-sm text-muted">Il tuo ruolo non può usare il Copilot.</p>}
+        <Card>
+          <ChatPanel key={active ?? "new"} conversationId={active} initialMessages={(messages ?? []) as ChatMessage[]} canUse={canAi} />
         </Card>
         <Card className="h-fit">
           <h2 className="mb-2 text-sm font-medium">Suggerimenti da approvare</h2>

@@ -10,17 +10,24 @@ import { askCopilot } from "./service";
 import { extractionSchema } from "@/modules/documenti/analysis";
 import { saveQuote } from "@/modules/preventivi/repository";
 
-export type ChatState = { error?: string; conversationId?: string } | null;
+export type ChatResult = { error?: string; reply?: string; conversationId?: string };
 
-export async function sendMessageAction(_prev: ChatState, formData: FormData): Promise<ChatState> {
+const chatInput = z.object({ question: z.string().trim().min(1).max(2000), conversationId: z.uuid().optional() });
+
+export async function sendMessageAction(input: { question: string; conversationId?: string }): Promise<ChatResult> {
   const ctx = await requirePermission("ai:use");
-  const parsed = z.object({ question: z.string().trim().min(1).max(2000), conversationId: z.uuid().optional().or(z.literal("")) }).safeParse(Object.fromEntries(formData));
+  const parsed = chatInput.safeParse(input);
   if (!parsed.success) return { error: "Scrivi una domanda (max 2000 caratteri)." };
   if (!rateLimit(`copilot:${ctx.userId}`, 20, 10 * 60_000)) return { error: "Troppe richieste, attendi qualche minuto." };
 
   const db = await createClient();
   const orgId = ctx.org.organizationId;
-  let conversationId = parsed.data.conversationId || undefined;
+  let conversationId = parsed.data.conversationId;
+  if (conversationId) {
+    // la conversazione deve essere dell'utente (RLS) e dell'organizzazione attiva
+    const { data: own } = await db.from("ai_conversations").select("id").eq("organization_id", orgId).eq("id", conversationId).maybeSingle();
+    if (!own) conversationId = undefined;
+  }
   if (!conversationId) {
     const { data, error } = await db.from("ai_conversations").insert({ organization_id: orgId, user_id: ctx.userId, title: parsed.data.question.slice(0, 80) }).select("id").single();
     if (error || !data) return { error: "Impossibile avviare la conversazione." };
@@ -34,10 +41,10 @@ export async function sendMessageAction(_prev: ChatState, formData: FormData): P
   });
   if (!result.ok) return { error: result.error, conversationId };
 
-  await db.from("ai_messages").insert([
-    { organization_id: orgId, conversation_id: conversationId, role: "user", content: parsed.data.question },
-    { organization_id: orgId, conversation_id: conversationId, role: "assistant", content: result.reply },
-  ]);
+  // due insert distinti: created_at diverso, ordine garantito (domanda prima della risposta)
+  await db.from("ai_messages").insert({ organization_id: orgId, conversation_id: conversationId, role: "user", content: parsed.data.question });
+  await db.from("ai_messages").insert({ organization_id: orgId, conversation_id: conversationId, role: "assistant", content: result.reply });
+  await db.from("ai_conversations").update({ updated_at: new Date().toISOString() }).eq("organization_id", orgId).eq("id", conversationId);
   if (result.suggestions.length) {
     await db.from("ai_suggestions").insert(
       result.suggestions.map((s) => ({
@@ -45,8 +52,7 @@ export async function sendMessageAction(_prev: ChatState, formData: FormData): P
       })),
     );
   }
-  revalidatePath("/copilot");
-  return { conversationId };
+  return { reply: result.reply, conversationId };
 }
 
 /** Il modello propone, l'utente decide: l'applicazione avviene qui, con i permessi dell'utente. */
