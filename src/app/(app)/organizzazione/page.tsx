@@ -15,11 +15,21 @@ export default async function OrganizationPage() {
   const db = await createClient();
   const orgId = ctx.org.organizationId;
   const manage = can(ctx.org.role, "members:manage");
-  const [{ data: members }, { data: invites }, { data: logs }] = await Promise.all([
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const [{ data: members }, { data: invites }, { data: logs }, { data: usage }, { data: quota }] = await Promise.all([
     db.from("memberships").select("id, role, user_id, profiles(full_name)").eq("organization_id", orgId).order("created_at"),
     manage ? db.from("invitations").select("id, email, role, expires_at").eq("organization_id", orgId).is("accepted_at", null).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
     can(ctx.org.role, "audit:read") ? db.from("audit_logs").select("id, action, entity, changed_fields, created_at").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(15) : Promise.resolve({ data: [] }),
+    manage ? db.from("ai_usage").select("feature, input_tokens, output_tokens").eq("organization_id", orgId).gte("created_at", monthStart) : Promise.resolve({ data: [] }),
+    db.from("ai_quotas").select("monthly_token_limit, tokens_used").eq("organization_id", orgId).maybeSingle(),
   ]);
+  const usageByFeature = new Map<string, { calls: number; tokens: number }>();
+  for (const u of usage ?? []) {
+    const cur = usageByFeature.get(u.feature as string) ?? { calls: 0, tokens: 0 };
+    cur.calls += 1;
+    cur.tokens += Number(u.input_tokens) + Number(u.output_tokens);
+    usageByFeature.set(u.feature as string, cur);
+  }
   return (
     <>
       <PageHeader title="Organizzazione" description={ctx.org.name} />
@@ -66,6 +76,20 @@ export default async function OrganizationPage() {
               </tbody></Table>
             </>
           )}
+        </>
+      )}
+
+      {manage && (
+        <>
+          <h2 className="mb-2 mt-8 font-medium">Consumi AI del mese</h2>
+          <Card>
+            <p className="mb-3 text-sm">Quota: <strong>{Number(quota?.tokens_used ?? 0).toLocaleString("it-IT")}</strong> / {Number(quota?.monthly_token_limit ?? 0).toLocaleString("it-IT")} token (prenotati)</p>
+            {usageByFeature.size === 0 ? <p className="text-sm text-muted">Nessun utilizzo questo mese.</p> : (
+              <ul className="space-y-1 text-sm">
+                {[...usageByFeature.entries()].map(([f, v]) => <li key={f} className="flex justify-between"><span>{f === "copilot" ? "Copilot" : f === "document_analysis" ? "Analisi documenti" : f}</span><span className="text-muted">{v.calls} richieste · {v.tokens.toLocaleString("it-IT")} token</span></li>)}
+              </ul>
+            )}
+          </Card>
         </>
       )}
 

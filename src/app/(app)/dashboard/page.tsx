@@ -14,12 +14,16 @@ export default async function DashboardPage() {
   const now = new Date();
   const in7 = new Date(now.getTime() + 7 * 86_400_000).toISOString();
 
-  const [customers, quotes, openTasks, reminders] = await Promise.all([
+  const today = now.toISOString().slice(0, 10);
+  const in7d = new Date(now.getTime() + 7 * 86_400_000).toISOString().slice(0, 10);
+  const [customers, quotes, openTasks, reminders, followUps] = await Promise.all([
     db.from("customers").select("id", { count: "exact", head: true }).eq("organization_id", orgId).is("deleted_at", null),
     db.from("quotes").select("status, total_cents, issue_date").eq("organization_id", orgId).is("deleted_at", null),
     db.from("tasks").select("id, title, due_at, priority").eq("organization_id", orgId).is("deleted_at", null).in("status", ["todo", "in_progress"]).order("due_at", { nullsFirst: false }).limit(200),
     db.from("reminders").select("id, remind_at, tasks(title)").eq("organization_id", orgId).eq("status", "pending").lte("remind_at", in7).order("remind_at").limit(5),
+    db.from("quotes").select("id", { count: "exact", head: true }).eq("organization_id", orgId).is("deleted_at", null).in("status", ["draft", "sent"]).not("follow_up_date", "is", null).lte("follow_up_date", in7d),
   ]);
+  void today;
 
   const q = (quotes.data ?? []) as { status: QuoteStatus; total_cents: number; issue_date: string }[];
   const sum = (s: QuoteStatus) => q.filter((x) => x.status === s).reduce((n, x) => n + Number(x.total_cents), 0);
@@ -38,13 +42,14 @@ export default async function DashboardPage() {
     { label: "Preventivi in attesa", value: formatEur(sum("sent")), sub: `${count("sent")} inviati`, href: "/preventivi?status=sent" },
     { label: `Accettati ${year}`, value: formatEur(acceptedYear), href: "/preventivi?status=accepted" },
     { label: "Tasso di accettazione", value: rate === null ? "—" : `${rate}%`, sub: decided ? `${decided} decisi` : "nessun dato" },
+    { label: "Follow-up in scadenza", value: String(followUps.count ?? 0), sub: "entro 7 giorni", href: "/promemoria" },
     { label: "Attività aperte", value: String(tasks.length), sub: `${overdue.length} in ritardo`, href: "/attivita" },
   ];
 
   return (
     <>
       <PageHeader title="Dashboard" description={`Panoramica di ${ctx.org.name}`} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         {kpis.map((k) => {
           const body = (
             <Card className="h-full">

@@ -11,7 +11,7 @@ import type { ActionResult } from "@/lib/result";
 type Action = (prev: ActionResult | null, formData: FormData) => Promise<ActionResult>;
 type Line = { description: string; quantity: string; price: string; discount: string; vat: string };
 export type QuoteFormInitial = {
-  customerId?: string; title?: string | null; issueDate?: string; validUntil?: string | null; notes?: string | null; terms?: string | null;
+  customerId?: string; title?: string | null; issueDate?: string; validUntil?: string | null; followUpDate?: string | null; notes?: string | null; terms?: string | null;
   items?: { description: string; quantity: number; unit_price_cents: number; discount_percent: number; vat_rate: number }[];
 };
 
@@ -57,6 +57,7 @@ export function QuoteForm({ action, customers, initial }: { action: Action; cust
         <div><Label htmlFor="title">Oggetto</Label><Input id="title" name="title" defaultValue={initial?.title ?? ""} /></div>
         <div><Label htmlFor="issueDate">Data emissione</Label><Input id="issueDate" name="issueDate" type="date" defaultValue={initial?.issueDate ?? new Date().toISOString().slice(0, 10)} /></div>
         <div><Label htmlFor="validUntil">Valido fino al</Label><Input id="validUntil" name="validUntil" type="date" defaultValue={initial?.validUntil ?? ""} /></div>
+        <div><Label htmlFor="followUpDate">Promemoria follow-up</Label><Input id="followUpDate" name="followUpDate" type="date" defaultValue={initial?.followUpDate ?? ""} /></div>
       </div>
 
       <div className="space-y-2">

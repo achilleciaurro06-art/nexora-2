@@ -8,7 +8,7 @@ export type Customer = {
 export type QuoteStatus = "draft" | "sent" | "accepted" | "rejected" | "expired";
 export type Quote = {
   id: string; organization_id: string; customer_id: string; number: string; title: string | null; status: QuoteStatus;
-  issue_date: string; valid_until: string | null; subtotal_cents: number; vat_cents: number; total_cents: number;
+  issue_date: string; valid_until: string | null; follow_up_date: string | null; subtotal_cents: number; vat_cents: number; total_cents: number;
   notes: string | null; terms: string | null; created_at: string;
 };
 export type QuoteItem = {

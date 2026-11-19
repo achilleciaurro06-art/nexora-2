@@ -39,3 +39,12 @@ export async function setOrganizationStatusAction(orgId: string, formData: FormD
   await createAdminClient().from("organizations").update({ status: status.data }).eq("id", orgId);
   revalidatePath("/admin");
 }
+
+export async function setAiQuotaAction(orgId: string, formData: FormData) {
+  const user = await requireContextOrUser();
+  await assertPlatformAdmin(user.id);
+  const limit = z.coerce.number().int().min(0).max(1_000_000_000).safeParse(formData.get("limit"));
+  if (!limit.success) return;
+  await createAdminClient().from("ai_quotas").update({ monthly_token_limit: limit.data, updated_at: new Date().toISOString() }).eq("organization_id", orgId);
+  revalidatePath("/admin");
+}

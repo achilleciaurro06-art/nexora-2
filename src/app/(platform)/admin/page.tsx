@@ -1,9 +1,10 @@
 import { requireContextOrUser, assertPlatformAdmin } from "@/modules/amministrazione/guard";
-import { setOrganizationStatusAction } from "@/modules/amministrazione/actions";
+import { setAiQuotaAction, setOrganizationStatusAction } from "@/modules/amministrazione/actions";
 import { CodeForm } from "@/modules/amministrazione/ui/code-form";
 import { loadPlatformOverview } from "@/modules/amministrazione/queries";
 import { Badge, Card, PageHeader, Table } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export const metadata = { title: "Amministrazione piattaforma" };
 
@@ -30,13 +31,20 @@ export default async function AdminPage() {
 
       <h2 className="mb-2 mt-8 font-medium">Aziende</h2>
       <Table>
-        <thead><tr><th>Nome</th><th>Creata il</th><th>Stato</th><th /></tr></thead>
+        <thead><tr><th>Nome</th><th>Creata il</th><th>Stato</th><th>Consumo AI (token/mese)</th><th /></tr></thead>
         <tbody>
-          {orgs.length === 0 && <tr><td colSpan={4} className="text-muted">Nessuna azienda.</td></tr>}
+          {orgs.length === 0 && <tr><td colSpan={5} className="text-muted">Nessuna azienda.</td></tr>}
           {orgs.map((o) => (
             <tr key={o.id}>
               <td>{o.name}</td><td>{new Date(o.created_at).toLocaleDateString("it-IT")}</td>
               <td><Badge>{o.status === "active" ? "Attiva" : "Sospesa"}</Badge></td>
+              <td>
+                <form action={setAiQuotaAction.bind(null, o.id)} className="flex items-center gap-2">
+                  <span className="whitespace-nowrap text-muted">{o.tokens_used.toLocaleString("it-IT")} /</span>
+                  <Input name="limit" type="number" min={0} defaultValue={o.token_limit} aria-label={`Limite token ${o.name}`} className="w-32" />
+                  <Button size="sm" variant="outline">Salva</Button>
+                </form>
+              </td>
               <td className="text-right">
                 <form action={setOrganizationStatusAction.bind(null, o.id)}>
                   <input type="hidden" name="status" value={o.status === "active" ? "suspended" : "active"} />

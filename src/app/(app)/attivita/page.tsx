@@ -22,6 +22,17 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   ]);
   const canWrite = can(ctx.org.role, "data:write");
   const now = new Date();
+
+  const [{ data: rc }, { data: rq }, { data: rt }] = await Promise.all([
+    db.from("customers").select("id, name, created_at").eq("organization_id", orgId).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
+    db.from("quotes").select("id, number, title, status, created_at").eq("organization_id", orgId).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
+    db.from("tasks").select("id, title, status, created_at").eq("organization_id", orgId).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
+  ]);
+  const feed = [
+    ...(rc ?? []).map((c) => ({ key: `c${c.id}`, at: c.created_at as string, text: `Nuovo cliente: ${c.name}`, href: `/clienti/${c.id}` })),
+    ...(rq ?? []).map((q) => ({ key: `q${q.id}`, at: q.created_at as string, text: `Preventivo ${q.number}${q.title ? ` · ${q.title}` : ""}`, href: `/preventivi/${q.id}` })),
+    ...(rt ?? []).map((t) => ({ key: `t${t.id}`, at: t.created_at as string, text: `Attività: ${t.title}`, href: undefined as string | undefined })),
+  ].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12);
   return (
     <>
       <PageHeader title="Attività" actions={<a className="text-sm text-primary underline" href={done === "1" ? "/attivita" : "/attivita?done=1"}>{done === "1" ? "Mostra aperte" : "Mostra completate"}</a>} />
@@ -53,6 +64,20 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
           })}
         </tbody>
       </Table>
+
+      <h2 className="mb-2 mt-8 font-medium">Cronologia recente</h2>
+      <Card>
+        {feed.length === 0 ? <p className="text-sm text-muted">Ancora nessuna attività registrata.</p> : (
+          <ul className="space-y-2 text-sm">
+            {feed.map((f) => (
+              <li key={f.key} className="flex justify-between gap-3">
+                {f.href ? <a className="truncate text-primary hover:underline" href={f.href}>{f.text}</a> : <span className="truncate">{f.text}</span>}
+                <span className="shrink-0 text-muted">{new Date(f.at).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
     </>
   );
 }

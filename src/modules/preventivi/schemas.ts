@@ -14,6 +14,7 @@ export const quoteSchema = z.object({
   title: optionalText(200),
   issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("")).transform((v) => v || null),
   validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("")).transform((v) => v || null),
+  followUpDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("")).transform((v) => v || null),
   notes: optionalText(4000),
   terms: optionalText(4000),
   items: z.array(quoteItemSchema).min(1, "Aggiungi almeno una riga").max(200),

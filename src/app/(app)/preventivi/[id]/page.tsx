@@ -39,6 +39,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
             <div><dt className="text-muted">Cliente</dt><dd><Link className="text-primary hover:underline" href={`/clienti/${quote.customer_id}`}>{customer?.name}</Link></dd></div>
             <div><dt className="text-muted">Stato</dt><dd><Badge>{QUOTE_STATUS_LABEL[quote.status]}</Badge></dd></div>
             <div><dt className="text-muted">Emissione</dt><dd>{new Date(quote.issue_date).toLocaleDateString("it-IT")}</dd></div>
+            <div><dt className="text-muted">Follow-up</dt><dd>{quote.follow_up_date ? new Date(quote.follow_up_date).toLocaleDateString("it-IT") : "—"}</dd></div>
             <div><dt className="text-muted">Valido fino al</dt><dd>{quote.valid_until ? new Date(quote.valid_until).toLocaleDateString("it-IT") : "—"}</dd></div>
           </dl>
           <Table>

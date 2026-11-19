@@ -1,11 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/server/supabase/server";
 import { requirePermission } from "@/server/auth/session";
 import { rateLimit } from "@/lib/rate-limit";
 import { askCopilot } from "./service";
+import { extractionSchema } from "@/modules/documenti/analysis";
+import { saveQuote } from "@/modules/preventivi/repository";
 
 export type ChatState = { error?: string; conversationId?: string } | null;
 
@@ -65,7 +68,34 @@ export async function decideSuggestionAction(id: string, formData: FormData) {
       if (error) return;
     }
   }
+  if (decision === "accepted" && s.kind === "quote_draft") {
+    const p = extractionSchema.safeParse(s.payload);
+    if (!p.success) return;
+    // cliente: si riusa quello esistente con lo stesso nome, altrimenti lo si crea (azione esplicita dell'utente)
+    const name = (p.data.client_name ?? "").trim();
+    let customerId: string | null = null;
+    if (name) {
+      const { data: found } = await db.from("customers").select("id").eq("organization_id", orgId).is("deleted_at", null).ilike("name", name.replace(/[%_]/g, "")).limit(1).maybeSingle();
+      customerId = (found?.id as string | undefined) ?? null;
+      if (!customerId) {
+        const { data: created } = await db.from("customers").insert({ organization_id: orgId, name, created_by: ctx.userId }).select("id").single();
+        customerId = (created?.id as string | undefined) ?? null;
+      }
+    }
+    if (!customerId) return; // senza cliente non si crea nulla: l'utente può creare il preventivo a mano
+    const items = p.data.items?.length
+      ? p.data.items.map((i) => ({ description: i.description, quantity: i.quantity, unitPriceCents: Math.round(i.unit_price * 100), discountPercent: 0, vatRate: 22 }))
+      : [{ description: p.data.description || p.data.quote_title || "Prestazione", quantity: 1, unitPriceCents: Math.round((p.data.amount ?? 0) * 100), discountPercent: 0, vatRate: 22 }];
+    const { data: quoteId, error } = await saveQuote(db, orgId, null, {
+      customerId, title: p.data.quote_title ?? null, issueDate: null, validUntil: null, followUpDate: null, notes: p.data.description ?? null, terms: null, items,
+    });
+    if (error || !quoteId) return;
+    await db.from("ai_suggestions").update({ status: "accepted" }).eq("organization_id", orgId).eq("id", id);
+    revalidatePath("/preventivi");
+    redirect(`/preventivi/${quoteId as string}`);
+  }
   await db.from("ai_suggestions").update({ status: decision }).eq("organization_id", orgId).eq("id", id);
   revalidatePath("/copilot");
   revalidatePath("/attivita");
+  revalidatePath("/documenti");
 }

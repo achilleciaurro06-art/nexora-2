@@ -24,7 +24,7 @@ export async function getQuote(db: SupabaseClient, orgId: string, id: string) {
 export async function saveQuote(db: SupabaseClient, orgId: string, quoteId: string | null, input: QuoteInput) {
   return db.rpc("save_quote", {
     p_quote: quoteId, p_org: orgId, p_customer: input.customerId, p_title: input.title,
-    p_issue_date: input.issueDate, p_valid_until: input.validUntil, p_notes: input.notes, p_terms: input.terms,
+    p_issue_date: input.issueDate, p_valid_until: input.validUntil, p_notes: input.notes, p_terms: input.terms, p_follow_up: input.followUpDate,
     p_items: input.items.map((i) => ({
       description: i.description, quantity: i.quantity, unit_price_cents: i.unitPriceCents,
       discount_percent: i.discountPercent, vat_rate: i.vatRate,

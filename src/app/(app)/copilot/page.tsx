@@ -2,11 +2,9 @@ import Link from "next/link";
 import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
 import { can } from "@/server/auth/permissions";
-import { decideSuggestionAction } from "@/modules/copilot/actions";
+import { SuggestionList, type SuggestionRow } from "@/modules/copilot/ui/suggestion-list";
 import { ChatForm } from "@/modules/copilot/ui/chat";
-import { Badge, Card, PageHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { formatEur } from "@/lib/money";
+import { Card, PageHeader } from "@/components/ui/card";
 
 export const metadata = { title: "Copilot AI" };
 
@@ -28,7 +26,6 @@ export default async function CopilotPage({ searchParams }: { searchParams: Prom
   const canDecide = can(ctx.org.role, "data:write");
   const used = Number(quota?.tokens_used ?? 0);
   const limit = Number(quota?.monthly_token_limit ?? 0);
-  void formatEur;
 
   return (
     <>
@@ -55,27 +52,7 @@ export default async function CopilotPage({ searchParams }: { searchParams: Prom
         </Card>
         <Card className="h-fit">
           <h2 className="mb-2 text-sm font-medium">Suggerimenti da approvare</h2>
-          {(suggestions ?? []).length === 0 ? <p className="text-sm text-muted">Nessun suggerimento in attesa.</p> : (
-            <ul className="space-y-3 text-sm">
-              {(suggestions ?? []).map((s) => {
-                const p = s.payload as { title?: string; description?: string; due_date?: string };
-                return (
-                  <li key={s.id as string} className="rounded-md border border-border p-3">
-                    <Badge>{s.kind === "task" ? "Attività" : "Spunto"}</Badge>
-                    <p className="mt-1 font-medium">{p.title}</p>
-                    {p.description && <p className="text-muted">{p.description}</p>}
-                    {p.due_date && <p className="text-xs text-muted">Scadenza: {p.due_date}</p>}
-                    {canDecide && (
-                      <form action={decideSuggestionAction.bind(null, s.id as string)} className="mt-2 flex gap-2">
-                        <Button size="sm" name="decision" value="accept">{s.kind === "task" ? "Crea attività" : "Ok"}</Button>
-                        <Button size="sm" variant="outline" name="decision" value="reject">Scarta</Button>
-                      </form>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <SuggestionList suggestions={(suggestions ?? []) as SuggestionRow[]} canDecide={canDecide} />
         </Card>
       </div>
     </>

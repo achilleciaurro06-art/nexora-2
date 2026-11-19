@@ -24,7 +24,7 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
     <>
       <PageHeader title={`Modifica ${quote.number}`} />
       <QuoteForm action={saveQuoteAction.bind(null, id)} customers={customers.map((c) => ({ id: c.id, name: c.name }))}
-        initial={{ customerId: quote.customer_id, title: quote.title, issueDate: quote.issue_date, validUntil: quote.valid_until, notes: quote.notes, terms: quote.terms, items }} />
+        initial={{ customerId: quote.customer_id, title: quote.title, issueDate: quote.issue_date, validUntil: quote.valid_until, followUpDate: quote.follow_up_date, notes: quote.notes, terms: quote.terms, items }} />
     </>
   );
 }
