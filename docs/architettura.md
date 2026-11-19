@@ -22,9 +22,9 @@ Nessun codice scritto, nessun database creato, nessun progetto Vercel/Supabase c
 | M5 | Ambienti | Locale (Supabase CLI/Docker) + **staging** (progetto Supabase cloud) + **produzione** (progetto cloud separato, piano Pro per backup/PITR). Niente "dev cloud" separato. | Riduce costi e deriva di configurazione. Se vuoi un dev cloud condiviso, si aggiunge. |
 | M6 | AI "senza modifiche autonome" | Il modello **non ha mai tool di scrittura**. Produce solo `ai_suggestions` (proposte strutturate). L'applicazione avviene con una Server Action richiamata dall'utente, con i suoi permessi RLS. | Difesa contro prompt injection (es. testo malevolo in un PDF). |
 | M7 | Accesso ai dati | `supabase-js` con la sessione utente (RLS attiva) + tipi generati. **Nessun ORM** (Prisma/Drizzle esclusi). Migrazioni SQL pure. | Un ORM con connessione diretta aggirerebbe RLS; SQL puro è coerente con il requisito di migrazioni versionate. |
-| M8 | Regione e GDPR | Progetti Supabase in **UE (Francoforte)**; DPA con Supabase, Vercel (regione `fra1`) e Anthropic; log AI senza dati personali non necessari; funzione di esportazione/cancellazione dati per organizzazione. | Target PMI italiane: GDPR è requisito, non optional. |
+| M8 | Regione e GDPR | Progetti Supabase in **UE (Francoforte)**; DPA con Supabase, Vercel (regione `fra1`) e Google (Gemini); log AI senza dati personali non necessari; funzione di esportazione/cancellazione dati per organizzazione. | Target PMI italiane: GDPR è requisito, non optional. |
 | M9 | Preventivi | Importi in **interi (centesimi)** + aliquota IVA per riga; numerazione progressiva per organizzazione e anno **senza buchi**, generata in DB. Fatturazione elettronica (SDI) **fuori perimetro** salvo tua richiesta. | Correttezza fiscale/contabile; evita errori di arrotondamento. |
-| M10 | Astrazione AI | Interfaccia propria sottile (`AiProvider`) invece del Vercel AI SDK. | Meno dipendenze, controllo su quote, log e PDF; Claude come primo adapter. |
+| M10 | Astrazione AI | Interfaccia propria sottile (`AiProvider`) invece del Vercel AI SDK. | Meno dipendenze, controllo su quote, log e PDF; Gemini come primo adapter. |
 
 ---
 
@@ -213,7 +213,7 @@ Owner/admin invitano per email (invito con token a scadenza) → l'utente impost
 | Qualità | ESLint, `tsc --noEmit`, `next build`, Prettier | a ogni PR |
 | Sicurezza | advisor Supabase, `npm audit`, secret scan | a ogni PR / settimanale |
 
-Le chiamate reali ad Anthropic non sono nei test automatici (provider simulato); un piccolo set di test "smoke" manuale/programmato in staging.
+Le chiamate reali ad Google (Gemini) non sono nei test automatici (provider simulato); un piccolo set di test "smoke" manuale/programmato in staging.
 
 ### 6.2 Ambienti e pipeline
 - **Locale**: Supabase CLI + `supabase db reset` (migrazioni + seed).
@@ -237,7 +237,7 @@ Versioni verificate su npm il 2026-11-19; saranno **bloccate esattamente** nel l
 | shadcn/ui (+ radix-ui, class-variance-authority, clsx, tailwind-merge, lucide-react) | – | Componenti copiati nel repo, accessibili |
 | @supabase/supabase-js | 2.119.x | Client DB/Auth/Storage |
 | @supabase/ssr | 0.12.x | Sessione via cookie in SSR |
-| @anthropic-ai/sdk | 1.10.x | Provider AI Claude (incl. input PDF) |
+| @anthropic-ai/sdk | 1.10.x | Provider AI Gemini (incl. input PDF) |
 | zod | 4.6.x | Validazione input/output (anche output AI) |
 | react-hook-form + @hookform/resolvers | 7.92.x | Form complessi (righe preventivo) |
 | @tanstack/react-query | 5.x | Cache/mutazioni solo dove serve interattività client |
@@ -279,7 +279,7 @@ Stime indicative per sviluppo con assistenza AI e tua revisione a fine fase (set
 - **C5 – PDF e prompt injection / costi AI**: limiti dimensione/pagine, quote atomiche prima della chiamata, suggerimenti mai applicati automaticamente.
 - **C6 – Migrazione dati da v1** (se desiderata): mapping, deduplicazione, import in staging prima; da decidere.
 - **C7 – Conformità GDPR/fiscale**: DPA, retention, export/cancellazione; limiti di responsabilità sui preventivi (non sono documenti fiscali).
-- **C8 – Costi**: Supabase Pro per prod + staging, Vercel Pro, consumo Anthropic.
+- **C8 – Costi**: Supabase Pro per prod + staging, Vercel Pro, consumo Google (Gemini).
 
 ---
 

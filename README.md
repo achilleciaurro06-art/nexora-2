@@ -1,6 +1,6 @@
 # NEXORA 2.0
 
-Gestionale per PMI italiane. Next.js (App Router) · TypeScript · Tailwind · Supabase · Claude · Vercel.
+Gestionale per PMI italiane. Next.js (App Router) · TypeScript · Tailwind · Supabase · Gemini · Vercel.
 Progetto indipendente da NEXORA 1. Architettura: [docs/architettura.md](docs/architettura.md).
 
 ## Database
