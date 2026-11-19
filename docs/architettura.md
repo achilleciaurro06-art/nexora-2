@@ -213,7 +213,7 @@ Owner/admin invitano per email (invito con token a scadenza) → l'utente impost
 | Qualità | ESLint, `tsc --noEmit`, `next build`, Prettier | a ogni PR |
 | Sicurezza | advisor Supabase, `npm audit`, secret scan | a ogni PR / settimanale |
 
-Le chiamate reali ad Google (Gemini) non sono nei test automatici (provider simulato); un piccolo set di test "smoke" manuale/programmato in staging.
+Le chiamate reali a Gemini non sono nei test automatici (provider simulato); un piccolo set di test "smoke" manuale/programmato in staging.
 
 ### 6.2 Ambienti e pipeline
 - **Locale**: Supabase CLI + `supabase db reset` (migrazioni + seed).
@@ -237,7 +237,7 @@ Versioni verificate su npm il 2026-11-19; saranno **bloccate esattamente** nel l
 | shadcn/ui (+ radix-ui, class-variance-authority, clsx, tailwind-merge, lucide-react) | – | Componenti copiati nel repo, accessibili |
 | @supabase/supabase-js | 2.119.x | Client DB/Auth/Storage |
 | @supabase/ssr | 0.12.x | Sessione via cookie in SSR |
-| @anthropic-ai/sdk | 1.10.x | Provider AI Gemini (incl. input PDF) |
+| @google/genai | 3.6.x | Provider AI Gemini (incl. input PDF) |
 | zod | 4.6.x | Validazione input/output (anche output AI) |
 | react-hook-form + @hookform/resolvers | 7.92.x | Form complessi (righe preventivo) |
 | @tanstack/react-query | 5.x | Cache/mutazioni solo dove serve interattività client |
