@@ -8,4 +8,5 @@ psql -q -c "create database $db"; trap 'psql -q -c "drop database $db" >/dev/nul
 P="psql -q -v ON_ERROR_STOP=1 -d $db"
 $P -f tests/00_local_stub.sql
 for f in migrations/*.sql; do $P -f "$f" >/dev/null; done
-$P -f tests/10_tenant_isolation.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED" | sed 's/^psql:[^ ]* //'
+$P -f tests/10_tenant_isolation.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED" | sed "s/^psql:[^ ]* //"
+$P -f tests/20_save_quote.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED" | sed "s/^psql:[^ ]* //"

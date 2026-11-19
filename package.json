@@ -12,7 +12,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "playwright test --trace off"
+    "e2e": "playwright test --trace off",
+    "db:test": "supabase/tests/run-local.sh",
+    "db:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_REF > src/types/database.ts"
   },
   "dependencies": {
     "@google/genai": "3.6.1",

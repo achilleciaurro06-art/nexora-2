@@ -1,0 +1,49 @@
+import Link from "next/link";
+import { requireContext } from "@/server/auth/session";
+import { createClient } from "@/server/supabase/server";
+import { can } from "@/server/auth/permissions";
+import { listQuotes } from "@/modules/preventivi/repository";
+import { Badge, PageHeader, Table } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import { formatEur } from "@/lib/money";
+import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
+
+export const metadata = { title: "Preventivi" };
+const FILTERS: (QuoteStatus | "")[] = ["", "draft", "sent", "accepted", "rejected", "expired"];
+
+export default async function QuotesPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+  const { status } = await searchParams;
+  const ctx = await requireContext();
+  const quotes = await listQuotes(await createClient(), ctx.org.organizationId, FILTERS.includes(status as QuoteStatus) ? status : undefined);
+  return (
+    <>
+      <PageHeader title="Preventivi"
+        actions={can(ctx.org.role, "data:write") ? <Link href="/preventivi/nuovo" className={buttonVariants()}>Nuovo preventivo</Link> : null} />
+      <nav className="mb-4 flex flex-wrap gap-2" aria-label="Filtro stato">
+        {FILTERS.map((f) => (
+          <Link key={f || "all"} href={f ? `/preventivi?status=${f}` : "/preventivi"} className={buttonVariants({ variant: (status ?? "") === f ? "default" : "outline", size: "sm" })}>
+            {f ? QUOTE_STATUS_LABEL[f] : "Tutti"}
+          </Link>
+        ))}
+      </nav>
+      <Table>
+        <thead><tr><th>Numero</th><th>Cliente</th><th>Oggetto</th><th>Data</th><th>Stato</th><th className="text-right">Totale</th></tr></thead>
+        <tbody>
+          {quotes.length === 0 && <tr><td colSpan={6} className="text-muted">Nessun preventivo.</td></tr>}
+          {quotes.map((q) => {
+            const c = Array.isArray(q.customers) ? q.customers[0] : q.customers;
+            return (
+              <tr key={q.id}>
+                <td><Link className="font-medium text-primary hover:underline" href={`/preventivi/${q.id}`}>{q.number}</Link></td>
+                <td>{c?.name ?? "—"}</td><td>{q.title ?? "—"}</td>
+                <td>{new Date(q.issue_date).toLocaleDateString("it-IT")}</td>
+                <td><Badge>{QUOTE_STATUS_LABEL[q.status]}</Badge></td>
+                <td className="text-right">{formatEur(q.total_cents)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </Table>
+    </>
+  );
+}
