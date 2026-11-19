@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/server/supabase/server";
 import { requirePermission } from "@/server/auth/session";
 import { generateToken, hashSecret } from "@/modules/auth/crypto";
+import { isUuid } from "@/lib/ids";
 
 export type InviteState = { ok: false; error: string } | { ok: true; link: string } | null;
 
@@ -28,19 +29,21 @@ export async function inviteMemberAction(_prev: InviteState, formData: FormData)
 export async function changeRoleAction(membershipId: string, formData: FormData) {
   const ctx = await requirePermission("members:manage");
   const role = z.enum(["owner", "admin", "member", "viewer"]).safeParse(formData.get("role"));
-  if (!role.success) return;
+  if (!role.success || !isUuid(membershipId)) return;
   await (await createClient()).from("memberships").update({ role: role.data }).eq("organization_id", ctx.org.organizationId).eq("id", membershipId);
   revalidatePath("/organizzazione");
 }
 
 export async function removeMemberAction(membershipId: string) {
   const ctx = await requirePermission("members:manage");
+  if (!isUuid(membershipId)) return;
   await (await createClient()).from("memberships").delete().eq("organization_id", ctx.org.organizationId).eq("id", membershipId);
   revalidatePath("/organizzazione");
 }
 
 export async function revokeInvitationAction(id: string) {
   const ctx = await requirePermission("members:manage");
+  if (!isUuid(id)) return;
   await (await createClient()).from("invitations").delete().eq("organization_id", ctx.org.organizationId).eq("id", id);
   revalidatePath("/organizzazione");
 }

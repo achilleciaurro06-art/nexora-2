@@ -13,6 +13,7 @@ const ITEMS = [
   { href: "/documenti", label: "Documenti" },
   { href: "/copilot", label: "Copilot AI" },
   { href: "/organizzazione", label: "Organizzazione" },
+  { href: "/impostazioni", label: "Impostazioni" },
 ];
 
 export function Nav({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {

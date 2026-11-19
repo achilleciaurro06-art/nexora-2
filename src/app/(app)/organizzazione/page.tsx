@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
 import { can } from "@/server/auth/permissions";
@@ -93,9 +94,11 @@ export default async function OrganizationPage() {
         </>
       )}
 
+      {(logs ?? []).length === 0 && !manage && <p className="mt-8 text-sm"><Link className="text-primary hover:underline" href="/organizzazione/audit">Le mie operazioni →</Link></p>}
+
       {(logs ?? []).length > 0 && (
         <>
-          <h2 className="mb-2 mt-8 font-medium">Ultime attività (audit)</h2>
+          <div className="mb-2 mt-8 flex items-center justify-between"><h2 className="font-medium">Ultime operazioni</h2><Link className="text-sm text-primary hover:underline" href="/organizzazione/audit">Vedi tutto →</Link></div>
           <Table><tbody>
             {(logs ?? []).map((l) => (
               <tr key={l.id as number}>

@@ -1,80 +1,109 @@
+import Link from "next/link";
 import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
 import { can } from "@/server/auth/permissions";
 import { listCustomers } from "@/modules/clienti/repository";
-import { setTaskStatusAction, deleteTaskAction } from "@/modules/attivita/actions";
+import { listMembers, nameMap } from "@/modules/organizzazioni/queries";
+import { setTaskStatusAction } from "@/modules/attivita/actions";
+import { bucketTasks } from "@/modules/attivita/buckets";
+import { PRIORITY_LABEL } from "@/modules/attivita/schemas";
 import { TaskForm } from "@/modules/attivita/ui/task-form";
 import { Badge, Card, PageHeader, Table } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 export const metadata = { title: "Attività" };
-const PRIORITY = { low: "Bassa", normal: "Normale", high: "Alta", urgent: "Urgente" } as const;
 
-export default async function TasksPage({ searchParams }: { searchParams: Promise<{ done?: string }> }) {
-  const { done } = await searchParams;
+type Row = {
+  id: string; title: string; status: string; priority: keyof typeof PRIORITY_LABEL; due_at: string | null;
+  assignee_id: string | null; customer_id: string | null; quote_id: string | null;
+  customers: { name: string } | { name: string }[] | null; quotes: { number: string } | { number: string }[] | null;
+};
+const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
+
+export default async function TasksPage({ searchParams }: { searchParams: Promise<{ mine?: string }> }) {
+  const { mine } = await searchParams;
   const ctx = await requireContext();
   const db = await createClient();
   const orgId = ctx.org.organizationId;
-  const statuses = done === "1" ? ["done", "cancelled"] : ["todo", "in_progress"];
-  const [{ data: tasks }, customers] = await Promise.all([
-    db.from("tasks").select("id, title, status, priority, due_at, customers(name)").eq("organization_id", orgId).is("deleted_at", null).in("status", statuses).order("due_at", { nullsFirst: false }).limit(200),
-    listCustomers(db, orgId),
-  ]);
-  const canWrite = can(ctx.org.role, "data:write");
-  const now = new Date();
 
-  const [{ data: rc }, { data: rq }, { data: rt }] = await Promise.all([
-    db.from("customers").select("id, name, created_at").eq("organization_id", orgId).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
-    db.from("quotes").select("id, number, title, status, created_at").eq("organization_id", orgId).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
-    db.from("tasks").select("id, title, status, created_at").eq("organization_id", orgId).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
+  let q = db.from("tasks")
+    .select("id, title, status, priority, due_at, assignee_id, customer_id, quote_id, customers(name), quotes(number)")
+    .eq("organization_id", orgId).is("deleted_at", null).order("due_at", { nullsFirst: false }).limit(500);
+  if (mine === "1") q = q.eq("assignee_id", ctx.userId);
+  const [{ data }, customers, members, { data: feed }] = await Promise.all([
+    q, listCustomers(db, orgId), listMembers(db, orgId),
+    db.from("activity_events").select("id, summary, created_at, entity, entity_id, customer_id").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(12),
   ]);
-  const feed = [
-    ...(rc ?? []).map((c) => ({ key: `c${c.id}`, at: c.created_at as string, text: `Nuovo cliente: ${c.name}`, href: `/clienti/${c.id}` })),
-    ...(rq ?? []).map((q) => ({ key: `q${q.id}`, at: q.created_at as string, text: `Preventivo ${q.number}${q.title ? ` · ${q.title}` : ""}`, href: `/preventivi/${q.id}` })),
-    ...(rt ?? []).map((t) => ({ key: `t${t.id}`, at: t.created_at as string, text: `Attività: ${t.title}`, href: undefined as string | undefined })),
-  ].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12);
-  return (
-    <>
-      <PageHeader title="Attività" actions={<a className="text-sm text-primary underline" href={done === "1" ? "/attivita" : "/attivita?done=1"}>{done === "1" ? "Mostra aperte" : "Mostra completate"}</a>} />
-      {canWrite && <Card className="mb-4"><TaskForm customers={customers.map((c) => ({ id: c.id, name: c.name }))} /></Card>}
+  const names = nameMap(members);
+  const rows = (data ?? []) as unknown as Row[];
+  const b = bucketTasks(rows, new Date());
+  b.done = b.done.slice(0, 30);
+  const canWrite = can(ctx.org.role, "data:write");
+
+  const section = (title: string, tasks: Row[], tone: "danger" | "default", empty: string) => (
+    <section aria-label={title} className="mt-6">
+      <h2 className={`mb-2 font-medium ${tone === "danger" && tasks.length ? "text-danger" : ""}`}>{title} <span className="text-sm font-normal text-muted">({tasks.length})</span></h2>
       <Table>
-        <thead><tr><th>Attività</th><th>Cliente</th><th>Scadenza</th><th>Priorità</th><th /></tr></thead>
+        <thead><tr><th>Attività</th><th>Cliente / Preventivo</th><th>Assegnata a</th><th>Scadenza</th><th>Priorità</th><th /></tr></thead>
         <tbody>
-          {(tasks ?? []).length === 0 && <tr><td colSpan={5} className="text-muted">Nessuna attività.</td></tr>}
-          {(tasks ?? []).map((t) => {
-            const c = Array.isArray(t.customers) ? t.customers[0] : t.customers;
-            const overdue = t.due_at && new Date(t.due_at as string) < now && t.status !== "done";
+          {tasks.length === 0 && <tr><td colSpan={6} className="text-muted">{empty}</td></tr>}
+          {tasks.map((t) => {
+            const c = one(t.customers), qt = one(t.quotes);
+            const done = t.status === "done" || t.status === "cancelled";
             return (
-              <tr key={t.id as string}>
-                <td className={t.status === "done" ? "line-through text-muted" : "font-medium"}>{t.title as string}</td>
-                <td>{(c as { name: string } | null)?.name ?? "—"}</td>
-                <td className={overdue ? "text-danger" : ""}>{t.due_at ? new Date(t.due_at as string).toLocaleDateString("it-IT") : "—"}</td>
-                <td><Badge>{PRIORITY[t.priority as keyof typeof PRIORITY]}</Badge></td>
-                <td className="flex justify-end gap-2">
+              <tr key={t.id}>
+                <td className={done ? "text-muted line-through" : "font-medium"}><Link className="hover:underline" href={`/attivita/${t.id}`}>{t.title}</Link></td>
+                <td className="text-sm">
+                  {c ? <Link className="text-primary hover:underline" href={`/clienti/${t.customer_id}`}>{c.name}</Link> : "—"}
+                  {qt && <> · <Link className="text-primary hover:underline" href={`/preventivi/${t.quote_id}`}>{qt.number}</Link></>}
+                </td>
+                <td>{t.assignee_id ? (names.get(t.assignee_id) ?? "—") : "—"}</td>
+                <td className={tone === "danger" ? "text-danger" : ""}>{t.due_at ? new Date(t.due_at).toLocaleDateString("it-IT") : "—"}</td>
+                <td><Badge>{PRIORITY_LABEL[t.priority]}</Badge></td>
+                <td className="text-right">
                   {canWrite && (
-                    <form action={setTaskStatusAction.bind(null, t.id as string)}>
+                    <form action={setTaskStatusAction.bind(null, t.id)}>
                       <input type="hidden" name="status" value={t.status === "done" ? "todo" : "done"} />
-                      <Button size="sm" variant="outline">{t.status === "done" ? "Riapri" : "Fatto"}</Button>
+                      <Button size="sm" variant="outline">{t.status === "done" ? "Riapri" : t.status === "cancelled" ? "Riapri" : "Fatto"}</Button>
                     </form>
                   )}
-                  {can(ctx.org.role, "data:delete") && <form action={deleteTaskAction.bind(null, t.id as string)}><Button size="sm" variant="ghost">Elimina</Button></form>}
                 </td>
               </tr>
             );
           })}
         </tbody>
       </Table>
+    </section>
+  );
+
+  return (
+    <>
+      <PageHeader title="Attività" description="Scadute, imminenti (7 giorni), altre aperte e completate."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Link href={mine === "1" ? "/attivita" : "/attivita?mine=1"} className={buttonVariants({ variant: mine === "1" ? "default" : "outline" })}>Solo le mie</Link>
+            {canWrite && <Link href="/attivita/nuova" className={buttonVariants()}>Nuova attività</Link>}
+          </div>
+        } />
+      {canWrite && <Card className="mb-2"><TaskForm customers={customers.map((c) => ({ id: c.id, name: c.name }))} /></Card>}
+      {section("Scadute", b.overdue, "danger", "Nessuna attività scaduta.")}
+      {section("Imminenti", b.soon, "default", "Nessuna attività in scadenza nei prossimi 7 giorni.")}
+      {section("Altre aperte", b.later, "default", "Nessuna altra attività aperta.")}
+      {section("Completate (ultime 30)", b.done, "default", "Nessuna attività completata.")}
 
       <h2 className="mb-2 mt-8 font-medium">Cronologia recente</h2>
       <Card>
-        {feed.length === 0 ? <p className="text-sm text-muted">Ancora nessuna attività registrata.</p> : (
+        {(feed ?? []).length === 0 ? <p className="text-sm text-muted">Ancora nessuna attività registrata.</p> : (
           <ul className="space-y-2 text-sm">
-            {feed.map((f) => (
-              <li key={f.key} className="flex justify-between gap-3">
-                {f.href ? <a className="truncate text-primary hover:underline" href={f.href}>{f.text}</a> : <span className="truncate">{f.text}</span>}
-                <span className="shrink-0 text-muted">{new Date(f.at).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}</span>
-              </li>
-            ))}
+            {(feed ?? []).map((f) => {
+              const href = f.entity === "quote" ? `/preventivi/${f.entity_id}` : f.entity === "task" ? `/attivita/${f.entity_id}` : f.customer_id ? `/clienti/${f.customer_id}` : undefined;
+              return (
+                <li key={f.id as number} className="flex justify-between gap-3">
+                  {href ? <Link className="truncate text-primary hover:underline" href={href}>{f.summary as string}</Link> : <span className="truncate">{f.summary as string}</span>}
+                  <span className="shrink-0 text-muted">{new Date(f.created_at as string).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}</span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </Card>

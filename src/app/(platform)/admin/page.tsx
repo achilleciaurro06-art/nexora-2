@@ -11,7 +11,7 @@ export const metadata = { title: "Amministrazione piattaforma" };
 export default async function AdminPage() {
   const user = await requireContextOrUser();
   await assertPlatformAdmin(user.id);
-  const { codes, orgs } = await loadPlatformOverview();
+  const { codes, orgs, audit } = await loadPlatformOverview();
   return (
     <>
       <PageHeader title="Amministrazione piattaforma" description="Solo per amministratori NEXORA. Le azioni qui usano privilegi elevati." />
@@ -51,6 +51,23 @@ export default async function AdminPage() {
                   <Button size="sm" variant="outline">{o.status === "active" ? "Sospendi" : "Riattiva"}</Button>
                 </form>
               </td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+
+      <h2 className="mb-2 mt-8 font-medium">Registro delle operazioni di piattaforma</h2>
+      <p className="mb-2 text-xs text-muted">Ogni azione amministrativa è tracciata. La console non dà accesso ai dati commerciali delle aziende (clienti, preventivi, documenti).</p>
+      <Table>
+        <thead><tr><th>Quando</th><th>Operazione</th><th>Azienda</th><th>Dettagli</th></tr></thead>
+        <tbody>
+          {audit.length === 0 && <tr><td colSpan={4} className="text-muted">Nessuna operazione registrata.</td></tr>}
+          {audit.map((a) => (
+            <tr key={a.id}>
+              <td className="whitespace-nowrap text-muted">{new Date(a.created_at).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}</td>
+              <td>{a.action}</td>
+              <td>{orgs.find((o) => o.id === a.organization_id)?.name ?? "—"}</td>
+              <td className="text-muted">{Object.entries(a.details).map(([k, v]) => `${k}: ${String(v)}`).join(" · ") || "—"}</td>
             </tr>
           ))}
         </tbody>

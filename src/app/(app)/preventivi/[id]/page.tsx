@@ -8,11 +8,14 @@ import { changeQuoteStatusAction, deleteQuoteAction } from "@/modules/preventivi
 import { Badge, Card, PageHeader, Table } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { formatEur } from "@/lib/money";
+import { PricePanel } from "@/modules/prezzi/ui/price-panel";
 import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
 
 const NEXT: Record<QuoteStatus, QuoteStatus[]> = {
   draft: ["sent"], sent: ["accepted", "rejected", "expired", "draft"], accepted: [], rejected: ["draft"], expired: ["draft"],
 };
+
+export const maxDuration = 60;
 
 export default async function QuotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -28,6 +31,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
         actions={
           <div className="no-print flex flex-wrap gap-2">
             <a href={`/preventivi/${id}/pdf`} download className={buttonVariants({ variant: "outline" })}>Scarica PDF</a>
+            {canWrite && <Link href={`/attivita/nuova?preventivo=${id}`} className={buttonVariants({ variant: "outline" })}>Crea attività</Link>}
             {canWrite && quote.status === "draft" && <Link href={`/preventivi/${id}/modifica`} className={buttonVariants({ variant: "outline" })}>Modifica</Link>}
             {can(ctx.org.role, "data:delete") && <form action={deleteQuoteAction.bind(null, id)}><Button variant="danger">Elimina</Button></form>}
           </div>
@@ -74,6 +78,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
           </Card>
         )}
       </div>
+      <PricePanel orgId={ctx.org.organizationId} quoteId={id} quoteStatus={quote.status} canAnalyze={canWrite && can(ctx.org.role, "ai:use")} canApply={canWrite} />
     </>
   );
 }

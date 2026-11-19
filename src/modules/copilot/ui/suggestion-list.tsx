@@ -1,49 +1,36 @@
-import { Badge } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { formatEur } from "@/lib/money";
-import { decideSuggestionAction } from "../actions";
+import { normalizeSuggestionPayload } from "@/modules/documenti/extraction";
+import { SuggestionCard, type SuggestionView } from "./suggestion-card";
 
 export type SuggestionRow = { id: string; kind: string; payload: unknown };
 
-const LABEL: Record<string, string> = { task: "Attività", insight: "Spunto", quote_draft: "Bozza preventivo da documento" };
+const s = (v: unknown) => (typeof v === "string" ? v : undefined);
 
+/** Elenco delle proposte in attesa. I dati vengono preparati lato server; la decisione resta sempre all'utente. */
 export function SuggestionList({ suggestions, canDecide }: { suggestions: SuggestionRow[]; canDecide: boolean }) {
-  if (suggestions.length === 0) return <p className="text-sm text-muted">Nessun suggerimento in attesa.</p>;
+  const rows = suggestions.filter((x) => x.kind !== "price_review"); // le proposte di prezzo si gestiscono nel preventivo
+  if (rows.length === 0) return <p className="text-sm text-muted">Nessun suggerimento in attesa.</p>;
   return (
-    <ul className="space-y-3 text-sm">
-      {suggestions.map((s) => {
-        const p = (s.payload ?? {}) as Record<string, unknown>;
-        const isDraft = s.kind === "quote_draft";
-        const items = Array.isArray(p.items) ? (p.items as { description: string; quantity: number; unit_price: number }[]) : [];
-        return (
-          <li key={s.id} className="rounded-md border border-border p-3">
-            <Badge>{LABEL[s.kind] ?? s.kind}</Badge>
-            {isDraft ? (
-              <div className="mt-1 space-y-1">
-                <p><strong>Cliente:</strong> {(p.client_name as string) || "— (da scegliere)"}</p>
-                <p><strong>Oggetto:</strong> {(p.quote_title as string) || "—"}</p>
-                {items.length > 0 ? (
-                  <ul className="list-disc pl-4 text-muted">{items.slice(0, 6).map((i, n) => <li key={n}>{i.description} — {i.quantity} × {formatEur(Math.round(i.unit_price * 100))}</li>)}</ul>
-                ) : (
-                  <p><strong>Importo:</strong> {typeof p.amount === "number" ? formatEur(Math.round(p.amount * 100)) : "—"}</p>
-                )}
-                <p className="text-xs text-muted">Verrà creata una bozza modificabile: controllala prima di inviarla.</p>
-              </div>
-            ) : (
-              <>
-                <p className="mt-1 font-medium">{p.title as string}</p>
-                {typeof p.description === "string" && <p className="text-muted">{p.description}</p>}
-                {typeof p.due_date === "string" && <p className="text-xs text-muted">Scadenza: {p.due_date}</p>}
-              </>
-            )}
-            {canDecide && (
-              <form action={decideSuggestionAction.bind(null, s.id)} className="mt-2 flex gap-2">
-                <Button size="sm" name="decision" value="accept">{isDraft ? "Crea bozza" : s.kind === "task" ? "Crea attività" : "Ok"}</Button>
-                <Button size="sm" variant="outline" name="decision" value="reject">Scarta</Button>
-              </form>
-            )}
-          </li>
-        );
+    <ul className="space-y-3">
+      {rows.map((r) => {
+        const p = (r.payload ?? {}) as Record<string, unknown>;
+        let draft: SuggestionView["draft"];
+        if (r.kind === "quote_draft") {
+          const n = normalizeSuggestionPayload(r.payload);
+          draft = {
+            client: n?.data.client.name, title: n?.data.quote.title, items: n?.data.items.length ?? 0,
+            total: typeof n?.data.quote.total === "number" ? formatEur(Math.round(n.data.quote.total * 100)) : undefined,
+            warnings: n?.checks.warnings.length ?? 0, duplicates: n?.checks.duplicates.length ?? 0,
+          };
+        }
+        const view: SuggestionView = {
+          id: r.id, kind: r.kind, canDecide, draft,
+          fields: {
+            title: s(p.title), description: s(p.description), due_date: s(p.due_date), follow_up_date: s(p.follow_up_date), body: s(p.body),
+            customer_name: s(p.customer_name), quote_number: s(p.quote_number), reason: s(p.reason),
+          },
+        };
+        return <SuggestionCard key={r.id} s={view} />;
       })}
     </ul>
   );

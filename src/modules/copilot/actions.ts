@@ -7,10 +7,11 @@ import { createClient } from "@/server/supabase/server";
 import { requirePermission } from "@/server/auth/session";
 import { rateLimit } from "@/lib/rate-limit";
 import { askCopilot } from "./service";
-import { extractionSchema } from "@/modules/documenti/analysis";
-import { saveQuote } from "@/modules/preventivi/repository";
+import { applySuggestion } from "./apply";
+import { fail, type ActionResult } from "@/lib/result";
+import { isUuid } from "@/lib/ids";
 
-export type ChatResult = { error?: string; reply?: string; conversationId?: string };
+export type ChatResult = { error?: string; reply?: string; conversationId?: string; sources?: string[] };
 
 const chatInput = z.object({ question: z.string().trim().min(1).max(2000), conversationId: z.uuid().optional() });
 
@@ -36,7 +37,7 @@ export async function sendMessageAction(input: { question: string; conversationI
 
   const { data: past } = await db.from("ai_messages").select("role, content").eq("organization_id", orgId).eq("conversation_id", conversationId).order("created_at").limit(20);
   const result = await askCopilot({
-    db, orgId, userId: ctx.userId, question: parsed.data.question,
+    db, orgId, userId: ctx.userId, userName: ctx.fullName, question: parsed.data.question,
     history: (past ?? []).map((m) => ({ role: m.role as "user" | "assistant", content: m.content as string })),
   });
   if (!result.ok) return { error: result.error, conversationId };
@@ -52,56 +53,36 @@ export async function sendMessageAction(input: { question: string; conversationI
       })),
     );
   }
-  return { reply: result.reply, conversationId };
+  return { reply: result.reply, conversationId, sources: result.packs };
 }
 
-/** Il modello propone, l'utente decide: l'applicazione avviene qui, con i permessi dell'utente. */
-export async function decideSuggestionAction(id: string, formData: FormData) {
+/**
+ * Il modello propone, l'utente decide: l'applicazione avviene qui, con i permessi dell'utente.
+ * - bozze da documento/Copilot: si passa sempre dalla schermata di revisione;
+ * - proposte di prezzo: si applicano dal pannello dell'analisi prezzi.
+ */
+export async function decideSuggestionAction(id: string, _prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const ctx = await requirePermission("data:write");
+  if (!isUuid(id)) return fail("Suggerimento non valido");
   const decision = formData.get("decision") === "accept" ? "accepted" : "rejected";
   const db = await createClient();
   const orgId = ctx.org.organizationId;
   const { data: s } = await db.from("ai_suggestions").select("kind, payload, status").eq("organization_id", orgId).eq("id", id).maybeSingle();
-  if (!s || s.status !== "pending") return;
+  if (!s) return fail("Suggerimento non trovato");
+  if (s.status !== "pending") return fail("Questo suggerimento è già stato gestito");
 
-  if (decision === "accepted" && s.kind === "task") {
-    const p = z.object({ title: z.string().max(200), description: z.string().max(2000).optional(), due_date: z.string().optional() }).safeParse(s.payload);
-    if (p.success) {
-      const due = p.data.due_date ? new Date(`${p.data.due_date}T09:00:00`).toISOString() : null;
-      const { error } = await db.from("tasks").insert({
-        organization_id: orgId, title: p.data.title, description: p.data.description ?? null, due_at: due, created_by: ctx.userId, assignee_id: ctx.userId,
-      });
-      if (error) return;
-    }
-  }
-  if (decision === "accepted" && s.kind === "quote_draft") {
-    const p = extractionSchema.safeParse(s.payload);
-    if (!p.success) return;
-    // cliente: si riusa quello esistente con lo stesso nome, altrimenti lo si crea (azione esplicita dell'utente)
-    const name = (p.data.client_name ?? "").trim();
-    let customerId: string | null = null;
-    if (name) {
-      const { data: found } = await db.from("customers").select("id").eq("organization_id", orgId).is("deleted_at", null).ilike("name", name.replace(/[%_]/g, "")).limit(1).maybeSingle();
-      customerId = (found?.id as string | undefined) ?? null;
-      if (!customerId) {
-        const { data: created } = await db.from("customers").insert({ organization_id: orgId, name, created_by: ctx.userId }).select("id").single();
-        customerId = (created?.id as string | undefined) ?? null;
-      }
-    }
-    if (!customerId) return; // senza cliente non si crea nulla: l'utente può creare il preventivo a mano
-    const items = p.data.items?.length
-      ? p.data.items.map((i) => ({ description: i.description, quantity: i.quantity, unitPriceCents: Math.round(i.unit_price * 100), discountPercent: 0, vatRate: 22 }))
-      : [{ description: p.data.description || p.data.quote_title || "Prestazione", quantity: 1, unitPriceCents: Math.round((p.data.amount ?? 0) * 100), discountPercent: 0, vatRate: 22 }];
-    const { data: quoteId, error } = await saveQuote(db, orgId, null, {
-      customerId, title: p.data.quote_title ?? null, issueDate: null, validUntil: null, followUpDate: null, notes: p.data.description ?? null, terms: null, items,
-    });
-    if (error || !quoteId) return;
-    await db.from("ai_suggestions").update({ status: "accepted" }).eq("organization_id", orgId).eq("id", id);
-    revalidatePath("/preventivi");
-    redirect(`/preventivi/${quoteId as string}`);
+  let redirectTo: string | undefined;
+  if (decision === "accepted") {
+    if (s.kind === "quote_draft") redirect(`/documenti/revisione/${id}`);
+    if (s.kind === "price_review") return fail("Applica o ignora il prezzo dal pannello «Analisi dei prezzi» del preventivo.");
+    const overrides: Record<string, string> = {};
+    for (const [k, v] of formData.entries()) if (typeof v === "string" && ["title", "due_date", "follow_up_date", "body", "description"].includes(k)) overrides[k] = v;
+    const res = await applySuggestion({ db, orgId, userId: ctx.userId, kind: s.kind as string, payload: s.payload, overrides });
+    if (!res.ok) return fail(res.error);
+    redirectTo = res.redirectTo;
   }
   await db.from("ai_suggestions").update({ status: decision }).eq("organization_id", orgId).eq("id", id);
-  revalidatePath("/copilot");
-  revalidatePath("/attivita");
-  revalidatePath("/documenti");
+  revalidatePath("/copilot"); revalidatePath("/attivita"); revalidatePath("/documenti"); revalidatePath("/dashboard");
+  if (redirectTo) redirect(redirectTo);
+  return { ok: true };
 }

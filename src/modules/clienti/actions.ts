@@ -6,6 +6,7 @@ import { createClient } from "@/server/supabase/server";
 import { requirePermission } from "@/server/auth/session";
 import { fail, type ActionResult } from "@/lib/result";
 import { fieldErrors } from "@/lib/forms";
+import { isUuid } from "@/lib/ids";
 import { customerSchema } from "./schemas";
 import { insertCustomer, softDeleteCustomer, updateCustomer } from "./repository";
 
@@ -21,6 +22,7 @@ export async function createCustomerAction(_prev: ActionResult | null, formData:
 
 export async function updateCustomerAction(id: string, _prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const ctx = await requirePermission("data:write");
+  if (!isUuid(id)) return fail("Cliente non valido");
   const parsed = customerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fail("Controlla i campi", fieldErrors(parsed.error));
   const { error } = await updateCustomer(await createClient(), ctx.org.organizationId, id, parsed.data);
@@ -31,6 +33,7 @@ export async function updateCustomerAction(id: string, _prev: ActionResult | nul
 
 export async function deleteCustomerAction(id: string) {
   const ctx = await requirePermission("data:delete");
+  if (!isUuid(id)) return;
   await softDeleteCustomer(await createClient(), ctx.org.organizationId, id);
   revalidatePath("/clienti");
   redirect("/clienti");

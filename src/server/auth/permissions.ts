@@ -7,11 +7,12 @@ export type Permission =
   | "data:delete"
   | "members:manage"
   | "ai:use"
-  | "audit:read";
+  | "audit:read"
+  | "settings:manage";
 
 const MATRIX: Record<Role, readonly Permission[]> = {
-  owner: ["data:read", "data:write", "data:delete", "members:manage", "ai:use", "audit:read"],
-  admin: ["data:read", "data:write", "data:delete", "members:manage", "ai:use", "audit:read"],
+  owner: ["data:read", "data:write", "data:delete", "members:manage", "ai:use", "audit:read", "settings:manage"],
+  admin: ["data:read", "data:write", "data:delete", "members:manage", "ai:use", "audit:read", "settings:manage"],
   member: ["data:read", "data:write", "ai:use"],
   viewer: ["data:read"],
 };

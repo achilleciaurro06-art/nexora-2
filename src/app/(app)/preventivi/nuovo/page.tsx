@@ -13,11 +13,13 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
   const { cliente } = await searchParams;
   const ctx = await requireContext();
   if (!can(ctx.org.role, "data:write")) redirect("/preventivi");
-  const customers = await listCustomers(await createClient(), ctx.org.organizationId);
+  const db = await createClient();
+  const customers = await listCustomers(db, ctx.org.organizationId);
+  const { data: org } = await db.from("organizations").select("quote_default_terms").eq("id", ctx.org.organizationId).maybeSingle();
   return (
     <>
       <PageHeader title="Nuovo preventivo" description="Il numero viene assegnato automaticamente al salvataggio." />
-      <QuoteForm action={saveQuoteAction.bind(null, null)} customers={customers.map((c) => ({ id: c.id, name: c.name }))} initial={{ customerId: cliente }} />
+      <QuoteForm action={saveQuoteAction.bind(null, null)} customers={customers.map((c) => ({ id: c.id, name: c.name }))} initial={{ customerId: cliente, terms: (org?.quote_default_terms as string | null) ?? null }} />
     </>
   );
 }

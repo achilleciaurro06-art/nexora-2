@@ -2,7 +2,11 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf
 import { formatEur } from "@/lib/money";
 
 export type QuotePdfData = {
-  organization: { name: string; vatNumber?: string | null };
+  organization: {
+    name: string; vatNumber?: string | null; taxCode?: string | null; address?: string | null; email?: string | null;
+    phone?: string | null; website?: string | null; footer?: string | null;
+    logo?: { bytes: Uint8Array; type: "png" | "jpg" } | null;
+  };
   quote: {
     number: string; title: string | null; status: string; issueDate: string; validUntil: string | null;
     subtotalCents: number; vatCents: number; totalCents: number; notes: string | null; terms: string | null;
@@ -89,12 +93,33 @@ export async function buildQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
     }
   };
 
-  // intestazione
-  text(data.organization.name, margin, y - 8, { size: 20, font: bold, color: ACCENT });
-  if (data.organization.vatNumber) text(`P.IVA ${data.organization.vatNumber}`, margin, y - 24, { size: 9, color: MUTED });
+  // intestazione: logo (se presente) + dati aziendali a sinistra, numero preventivo a destra
+  const org = data.organization;
+  let leftY = y;
+  let logoDrawn = false;
+  if (org.logo) {
+    try {
+      const img = org.logo.type === "png" ? await pdf.embedPng(org.logo.bytes) : await pdf.embedJpg(org.logo.bytes);
+      const scale = Math.min(150 / img.width, 48 / img.height, 1);
+      const lw = img.width * scale, lh = img.height * scale;
+      page.drawImage(img, { x: margin, y: leftY - lh, width: lw, height: lh });
+      leftY -= lh + 8;
+      logoDrawn = true;
+    } catch {
+      logoDrawn = false; // logo illeggibile: si ripiega sul solo nome
+    }
+  }
+  if (logoDrawn) { text(org.name, margin, leftY - 8, { size: 11, font: bold }); leftY -= 18; }
+  else { text(org.name, margin, leftY - 10, { size: 20, font: bold, color: ACCENT }); leftY -= 26; }
+  const orgLines = [
+    org.address,
+    [org.vatNumber && `P.IVA ${org.vatNumber}`, org.taxCode && `C.F. ${org.taxCode}`].filter(Boolean).join("  ·  "),
+    [org.email, org.phone, org.website].filter(Boolean).join("  ·  "),
+  ].filter((l): l is string => Boolean(l));
+  for (const l of orgLines) for (const wl of wrap(l, font, 8.5, 300)) { text(wl, margin, leftY - 2, { size: 8.5, color: MUTED }); leftY -= 11; }
   textRight("PREVENTIVO", right, y - 6, { size: 11, font: bold, color: MUTED });
   textRight(`N. ${data.quote.number}`, right, y - 24, { size: 15, font: bold });
-  y -= 44; rule(y); y -= 22;
+  y = Math.min(y - 44, leftY - 6); rule(y); y -= 22;
 
   // metadati + cliente
   const metaTop = y;
@@ -155,6 +180,12 @@ export async function buildQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
     text(label, margin, y, { size: 9, font: bold, color: MUTED }); y -= 14;
     for (const l of wrap(body, font, 9.5, right - margin)) { ensure(14); text(l, margin, y, { size: 9.5 }); y -= 12.5; }
     y -= 10;
+  }
+
+  if (org.footer) {
+    ensure(30);
+    text("Informazioni", margin, y, { size: 9, font: bold, color: MUTED }); y -= 14;
+    for (const l of wrap(org.footer, font, 9, right - margin)) { ensure(14); text(l, margin, y, { size: 9, color: MUTED }); y -= 12; }
   }
 
   // piè di pagina

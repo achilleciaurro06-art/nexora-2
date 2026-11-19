@@ -13,14 +13,25 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const db = await createClient();
   const found = await getQuote(db, ctx.org.organizationId, id);
   if (!found) return NextResponse.json({ error: "Non trovato" }, { status: 404 });
-  const { data: org } = await db.from("organizations").select("name, vat_number").eq("id", ctx.org.organizationId).maybeSingle();
+  const { data: org } = await db.from("organizations")
+    .select("name, vat_number, tax_code, address, email, phone, website, logo_path, quote_footer")
+    .eq("id", ctx.org.organizationId).maybeSingle();
+  let logo: { bytes: Uint8Array; type: "png" | "jpg" } | null = null;
+  if (org?.logo_path) {
+    const { data: blob } = await db.storage.from("documents").download(org.logo_path as string);
+    if (blob) logo = { bytes: new Uint8Array(await blob.arrayBuffer()), type: (org.logo_path as string).endsWith(".png") ? "png" : "jpg" };
+  }
 
   const { quote, items } = found;
   const c = quote.customers;
   const address = c ? [c.address_line, [c.postal_code, c.city, c.province && `(${c.province})`].filter(Boolean).join(" ")].filter(Boolean).join(", ") : null;
 
   const bytes = await buildQuotePdf({
-    organization: { name: (org?.name as string | undefined) ?? ctx.org.name, vatNumber: (org?.vat_number as string | null | undefined) ?? null },
+    organization: {
+      name: (org?.name as string | undefined) ?? ctx.org.name, vatNumber: (org?.vat_number as string | null) ?? null,
+      taxCode: (org?.tax_code as string | null) ?? null, address: (org?.address as string | null) ?? null, email: (org?.email as string | null) ?? null,
+      phone: (org?.phone as string | null) ?? null, website: (org?.website as string | null) ?? null, footer: (org?.quote_footer as string | null) ?? null, logo,
+    },
     quote: {
       number: quote.number, title: quote.title, status: quote.status, issueDate: quote.issue_date, validUntil: quote.valid_until,
       subtotalCents: quote.subtotal_cents, vatCents: quote.vat_cents, totalCents: quote.total_cents, notes: quote.notes, terms: quote.terms,

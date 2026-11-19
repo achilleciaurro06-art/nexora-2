@@ -7,7 +7,13 @@ import { Textarea } from "@/components/ui/input";
 import { Alert } from "@/components/ui/card";
 import { sendMessageAction } from "../actions";
 
-export type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
+export type ChatMessage = { id: string; role: "user" | "assistant"; content: string; sources?: string[] };
+
+const SOURCE_LABEL: Record<string, string> = {
+  azienda: "dati generali", stale_customers: "clienti da ricontattare", pending_quotes: "preventivi in attesa", win_odds: "storico di accettazione",
+  top_customers: "valore per cliente", tasks: "attività e scadenze", price_anomalies: "analisi prezzi", documents: "documenti", past_ai: "analisi precedenti", org_info: "dati aziendali",
+};
+const sourceLabel = (s: string) => (s.startsWith("scheda_cliente:") ? `scheda ${s.slice(15)}` : s.startsWith("preventivo:") ? `preventivo ${s.slice(11)}` : (SOURCE_LABEL[s] ?? s));
 
 const SLOW_AFTER_S = 20;
 
@@ -45,7 +51,7 @@ export function ChatPanel({ conversationId: initialId, initialMessages, canUse }
           setInput(question); // permette di riprovare senza riscrivere
           return;
         }
-        setMessages((m) => [...m, { id: `local-a-${m.length}`, role: "assistant", content: res.reply! }]);
+        setMessages((m) => [...m, { id: `local-a-${m.length}`, role: "assistant", content: res.reply!, sources: res.sources }]);
         router.refresh(); // aggiorna elenco conversazioni e suggerimenti
       } catch {
         setError("La richiesta è stata interrotta (connessione o tempo scaduto). La risposta potrebbe essere già stata salvata: ricarica la pagina per verificarlo.");
@@ -62,6 +68,7 @@ export function ChatPanel({ conversationId: initialId, initialMessages, canUse }
           <div key={m.id} className={m.role === "user" ? "ml-8 rounded-lg bg-primary/10 p-3 text-sm" : "mr-8 rounded-lg border border-border p-3 text-sm"}>
             <p className="mb-1 text-xs text-muted">{m.role === "user" ? "Tu" : "Copilot"}</p>
             <p className="whitespace-pre-wrap">{m.content}</p>
+            {m.role === "assistant" && m.sources && m.sources.length > 0 && <p className="mt-2 text-xs text-muted">Dati consultati: {m.sources.map(sourceLabel).join(", ")}</p>}
           </div>
         ))}
         {pending && (
