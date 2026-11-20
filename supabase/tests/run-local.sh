@@ -12,3 +12,4 @@ $P -f tests/10_tenant_isolation.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED" | 
 $P -f tests/20_save_quote.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED" | sed "s/^psql:[^ ]* //"
 $P -f tests/30_commercial.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"
 $P -f tests/40_quotes_complete.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"
+$P -f tests/50_sector.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"

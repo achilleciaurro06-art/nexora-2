@@ -1,3 +1,4 @@
+import { SECTORS, isSector } from "@/modules/settore/presets";
 import "server-only";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -79,12 +80,14 @@ export async function askCopilot(args: {
 }): Promise<CopilotResult> {
   const [ctx, { data: org }] = await Promise.all([
     buildContext({ db: args.db, orgId: args.orgId, userId: args.userId, userName: args.userName, question: args.question }),
-    args.db.from("organizations").select("settings").eq("id", args.orgId).maybeSingle(),
+    args.db.from("organizations").select("settings, sector").eq("id", args.orgId).maybeSingle(),
   ]);
   const ai = parseOrgSettings(org?.settings).ai;
   const style = ai.tone === "detailed" ? "Stile richiesto dall'azienda: risposte dettagliate e argomentate." : "Stile richiesto dall'azienda: risposte brevi e dirette.";
   // il contesto scritto dall'azienda è un dato (non attendibile quanto un'istruzione): serve solo a capire il business
-  const about = ai.context ? `\n\n<PROFILO_AZIENDA_SCRITTO_DALL_AZIENDA>\n${ai.context}\n</PROFILO_AZIENDA_SCRITTO_DALL_AZIENDA>` : "";
+  const sectorKey = isSector(org?.sector) ? org.sector : "generic";
+  const sectorHint = SECTORS[sectorKey].aiHint ? `\n\n<SETTORE_DELL_AZIENDA>\n${SECTORS[sectorKey].aiHint}\n</SETTORE_DELL_AZIENDA>` : "";
+  const about = sectorHint + (ai.context ? `\n\n<PROFILO_AZIENDA_SCRITTO_DALL_AZIENDA>\n${ai.context}\n</PROFILO_AZIENDA_SCRITTO_DALL_AZIENDA>` : "");
   const system = `${SYSTEM}\n${style}${about}\n\n<DATI_AZIENDA>\n${ctx.text}\n</DATI_AZIENDA>`;
   const messages = [...args.history.slice(-8), { role: "user" as const, content: args.question }];
 

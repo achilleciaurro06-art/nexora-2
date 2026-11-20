@@ -8,6 +8,7 @@ const ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/clienti", label: "Clienti" },
   { href: "/preventivi", label: "Preventivi" },
+  { href: "/catalogo", label: "Catalogo" },
   { href: "/attivita", label: "Attività" },
   { href: "/promemoria", label: "Promemoria" },
   { href: "/documenti", label: "Documenti" },
@@ -15,9 +16,10 @@ const ITEMS = [
   { href: "/impostazioni", label: "Impostazioni" },
 ];
 
-export function Nav({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
+export function Nav({ isPlatformAdmin, labels = {} }: { isPlatformAdmin: boolean; labels?: Record<string, string> }) {
   const path = usePathname();
-  const items = isPlatformAdmin ? [...ITEMS, { href: "/admin", label: "Amministrazione" }] : ITEMS;
+  const base = ITEMS.map((i) => ({ ...i, label: labels[i.href] ?? i.label }));
+  const items = isPlatformAdmin ? [...base, { href: "/admin", label: "Amministrazione" }] : base;
   return (
     <nav className="flex gap-1 overflow-x-auto md:flex-col" aria-label="Principale">
       {items.map((i) => (

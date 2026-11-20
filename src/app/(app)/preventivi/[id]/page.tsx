@@ -6,6 +6,8 @@ import { can } from "@/server/auth/permissions";
 import { getQuote, listBillings, listRevisions } from "@/modules/preventivi/repository";
 import { BillingForm } from "@/modules/preventivi/ui/billing-form";
 import { listMembers, nameMap } from "@/modules/organizzazioni/queries";
+import { listFieldDefs } from "@/modules/settore/queries";
+import { displayValue } from "@/modules/settore/custom-fields";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { changeQuoteStatusAction, deleteQuoteAction, duplicateQuoteAction, removeBillingAction } from "@/modules/preventivi/actions";
 import { Alert, Card, PageHeader, Table } from "@/components/ui/card";
@@ -20,6 +22,7 @@ const NEXT: Record<QuoteStatus, QuoteStatus[]> = {
 };
 
 export const maxDuration = 60;
+const quote_has = (v: Record<string, unknown> | null | undefined, k: string) => v?.[k] !== undefined && v[k] !== "";
 
 export default async function QuotePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ errore?: string }> }) {
   const { id } = await params;
@@ -28,7 +31,8 @@ export default async function QuotePage({ params, searchParams }: { params: Prom
   const db = await createClient();
   const found = await getQuote(db, ctx.org.organizationId, id);
   if (!found) notFound();
-  const [revisions, billings] = await Promise.all([listRevisions(db, ctx.org.organizationId, id), listBillings(db, ctx.org.organizationId, id)]);
+  const [revisions, billings, fieldDefs] = await Promise.all([listRevisions(db, ctx.org.organizationId, id), listBillings(db, ctx.org.organizationId, id), listFieldDefs(db, ctx.org.organizationId, "quote")]);
+  const shownFields = fieldDefs.filter((d) => (d.active || quote_has(found.quote.custom_values, d.key)) && quote_has(found.quote.custom_values, d.key));
   const { quote, items } = found;
   const customer = quote.customers;
   const canWrite = can(ctx.org.role, "data:write");
@@ -54,6 +58,7 @@ export default async function QuotePage({ params, searchParams }: { params: Prom
             <div><dt className="text-muted">Stato</dt><dd><StatusBadge status={quote.status} /></dd></div>
             <div><dt className="text-muted">Emissione</dt><dd>{new Date(quote.issue_date).toLocaleDateString("it-IT")}</dd></div>
             <div><dt className="text-muted">Follow-up</dt><dd>{quote.follow_up_date ? new Date(quote.follow_up_date).toLocaleDateString("it-IT") : "—"}</dd></div>
+            {shownFields.map((d) => <div key={d.key}><dt className="text-muted">{d.label}</dt><dd>{displayValue(d, found.quote.custom_values?.[d.key])}</dd></div>)}
             <div><dt className="text-muted">Valido fino al</dt><dd>{quote.valid_until ? new Date(quote.valid_until).toLocaleDateString("it-IT") : "—"}</dd></div>
           </dl>
           <Table>

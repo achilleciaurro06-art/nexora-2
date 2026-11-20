@@ -6,10 +6,12 @@ import { Alert } from "@/components/ui/card";
 import type { ActionResult } from "@/lib/result";
 import type { Customer } from "@/types/domain";
 import { useFormAction } from "@/lib/use-form-action";
+import { CustomFieldsInputs } from "@/modules/settore/ui/custom-fields-inputs";
+import type { CustomFieldDef } from "@/modules/settore/custom-fields";
 
 type Action = (prev: ActionResult | null, formData: FormData) => Promise<ActionResult>;
 
-export function CustomerForm({ action, customer, readOnly }: { action: Action; customer?: Customer; readOnly?: boolean }) {
+export function CustomerForm({ action, customer, readOnly, fields = [], priceLists = [] }: { action: Action; customer?: Customer; readOnly?: boolean; fields?: CustomFieldDef[]; priceLists?: { id: string; name: string }[] }) {
   const { state, pending, onSubmit } = useFormAction(action);
   const err = (k: string) => (state && !state.ok ? state.fieldErrors?.[k]?.[0] : undefined);
   const f = (name: keyof Customer) => ({ name, id: name, defaultValue: (customer?.[name] as string | null) ?? "", disabled: readOnly });
@@ -36,6 +38,16 @@ export function CustomerForm({ action, customer, readOnly }: { action: Action; c
           <option value="lead">Potenziale</option><option value="active">Attivo</option><option value="inactive">Inattivo</option>
         </Select>
       </div>
+      {priceLists.length > 0 && (
+        <div>
+          <Label htmlFor="price_list_id">Listino prezzi</Label>
+          <Select name="price_list_id" id="price_list_id" defaultValue={customer?.price_list_id ?? ""} disabled={readOnly}>
+            <option value="">Nessuno (prezzo base)</option>
+            {priceLists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </Select>
+        </div>
+      )}
+      <CustomFieldsInputs defs={fields} values={customer?.custom_values} readOnly={readOnly} />
       <div className="sm:col-span-2"><Label htmlFor="notes">Note</Label><Textarea {...f("notes")} /></div>
       {state && !state.ok && <div className="sm:col-span-2"><Alert>{state.error}</Alert></div>}
       {state?.ok && <div className="sm:col-span-2"><Alert kind="success">Salvato</Alert></div>}

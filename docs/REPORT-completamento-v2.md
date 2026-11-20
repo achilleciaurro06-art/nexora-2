@@ -79,3 +79,27 @@ Superati: 74 test unitari (11 file), 98 controlli SQL su RLS/ruoli/isolamento/no
 **Test:** 143 controlli SQL (+25 nuovi in `40_quotes_complete.sql`), 102 unit (+17), 42 E2E (+7), tsc/eslint/build puliti. I test SQL hanno trovato e fatto correggere un errore reale della migrazione prima del rilascio.
 
 **Limiti noti:** le revisioni registrano lo storico ma non c'è (ancora) «ripristina questa versione»; il fatturato è inserito a mano (nessuna integrazione con la fatturazione elettronica); il prossimo numero effettivo non è leggibile da interfaccia (il contatore è privato) — dopo l'impostazione viene mostrato l'esito.
+
+---
+
+## Aggiornamento – Fase 3: adattabilità per settore (branch `feature/completamento-funzionale-v2`, NON in produzione)
+
+**Fatto e verificato (DB, unit, E2E in browser):**
+- **Settore e terminologia** (Impostazioni → Settore): settore (generico, rubinetterie, serramenti, edilizia, impianti, servizi) e nomi personalizzabili di cliente/preventivo (singolare e plurale). Applicati a menu laterale, titoli e pulsanti degli elenchi Clienti e Preventivi. Il settore entra anche nel contesto del Copilot (sotto forma di dato, non di istruzione).
+- **Campi personalizzati** su clienti e preventivi (testo, numero, data, scelta da elenco, sì/no; obbligatori opzionali): creazione, disattivazione/riattivazione senza perdere i valori già salvati, validazione lato server (i valori di campi disattivati restano intatti), copia nella duplicazione del preventivo, visibili nella scheda preventivo.
+- **Catalogo prodotti e servizi** (nuova voce «Catalogo»): codice univoco, categoria, unità, prezzo base, IVA, attivo/archiviato, ricerca.
+- **Listini**: prezzi per prodotto, assegnabili al cliente; nel preventivo il prodotto prende il prezzo di listino del cliente, altrimenti il prezzo base (con indicazione di quale è stato applicato).
+- **Modelli di preventivo**: righe, oggetto, note e condizioni; «Applica un modello» nel modulo (chiede conferma se sostituisce righe; non sovrascrive oggetto/note/condizioni già compilati).
+- **Proposte per settore**: campi e modelli di partenza aggiungibili con un clic (idempotente, non duplica né tocca l'esistente).
+- Permessi: catalogo e modelli → chi può scrivere; listini, campi personalizzati e settore → titolare/amministratori. Tutto isolato per organizzazione e registrato in audit.
+
+**Migrazione:** `20261119000018_sector_adaptability.sql` (additiva: 5 tabelle nuove, colonne `sector`/`terminology` su `organizations`, `custom_values` su `customers`/`quotes`, `price_list_id` su `customers`; sostituisce `duplicate_quote` per copiare i campi personalizzati). Da applicare dopo la 017; **non applicata in produzione**.
+
+**Test:** 195 controlli SQL (+27 in `50_sector.sql`), 111 unit (+9), 53 E2E (+11), tsc/eslint puliti.
+
+**Limiti noti e decisioni da confermare:**
+- I preset di settore (campi e modelli) sono **proposte mie, non conoscenza di settore**: per rubinetterie e serramenti servono i vostri veri campi, listini e voci tipo. I prezzi dei modelli sono a zero.
+- La terminologia personalizzata è applicata a menu ed elenchi principali; altre schermate (messaggi, PDF, Copilot, schede di dettaglio) usano ancora «cliente»/«preventivo».
+- I campi personalizzati non compaiono (ancora) nel PDF, nelle ricerche né nei filtri; i valori dei preventivi si salvano con una seconda scrittura dopo il salvataggio (se fallisce, il preventivo c'è e il messaggio lo dice).
+- Il catalogo non ha import da Excel/CSV né storico dei prezzi; la scelta del prodotto nel preventivo ricopia i dati (non resta un legame con il prodotto: cambiare il catalogo non modifica i preventivi esistenti — voluto).
+- Il confronto prezzi AI (Fase precedente) non usa ancora il catalogo.

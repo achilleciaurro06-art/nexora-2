@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RemoveButton } from "@/components/ui/remove-button";
 import { deleteCustomerAction } from "@/modules/clienti/actions";
+import { getSector } from "@/modules/settore/queries";
 
 export const metadata = { title: "Clienti" };
 const STATUS = { lead: "Potenziale", active: "Attivo", inactive: "Inattivo" } as const;
@@ -17,6 +18,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const ctx = await requireContext();
   const db = await createClient();
   const customers = await listCustomers(db, ctx.org.organizationId, q);
+  const { terms } = await getSector(db, ctx.org.organizationId);
   const canDelete = can(ctx.org.role, "data:delete");
   // conteggi per un messaggio di conferma chiaro (quanti preventivi aperti verranno rimossi con il cliente)
   const counts = new Map<string, { open: number; closed: number }>();
@@ -37,8 +39,8 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   };
   return (
     <>
-      <PageHeader title="Clienti" description={`${customers.length} risultati`}
-        actions={can(ctx.org.role, "data:write") ? <Link href="/clienti/nuovo" className={buttonVariants()}>Nuovo cliente</Link> : null} />
+      <PageHeader title={terms.customer_plural} description={`${customers.length} risultati`}
+        actions={can(ctx.org.role, "data:write") ? <Link href="/clienti/nuovo" className={buttonVariants()}>Nuovo {terms.customer_singular.toLowerCase()}</Link> : null} />
       <form className="mb-4 max-w-sm"><Input name="q" defaultValue={q} placeholder="Cerca per nome…" aria-label="Cerca cliente" /></form>
       <Table>
         <thead><tr><th>Nome</th><th>Email</th><th>Telefono</th><th>Città</th><th>Stato</th>{canDelete && <th />}</tr></thead>

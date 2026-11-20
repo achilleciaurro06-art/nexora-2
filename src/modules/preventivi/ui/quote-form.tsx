@@ -8,13 +8,17 @@ import { Alert } from "@/components/ui/card";
 import { formatEur, quoteTotals } from "@/lib/money";
 import type { ActionResult } from "@/lib/result";
 import { useFormAction } from "@/lib/use-form-action";
+import { CustomFieldsInputs } from "@/modules/settore/ui/custom-fields-inputs";
+import { priceFor } from "@/modules/settore/pricing";
+import type { QuoteCatalog } from "@/modules/settore/queries";
+import type { CustomValues } from "@/modules/settore/custom-fields";
 
 type Action = (prev: ActionResult | null, formData: FormData) => Promise<ActionResult>;
 export type Line = { description: string; quantity: string; price: string; discount: string; vat: string };
 export type LineItemInput = { description: string; quantity: number; unit_price_cents: number; discount_percent: number; vat_rate: number };
 export type QuoteFormInitial = {
   customerId?: string; title?: string | null; issueDate?: string; validUntil?: string | null; followUpDate?: string | null; notes?: string | null; terms?: string | null;
-  items?: LineItemInput[];
+  items?: LineItemInput[]; customValues?: CustomValues | null;
 };
 
 export const emptyLine = (vat = "22"): Line => ({ description: "", quantity: "1", price: "0", discount: "0", vat });
@@ -69,10 +73,36 @@ export function QuoteLinesEditor({ lines, onChange, defaultVat = "22" }: { lines
   );
 }
 
-export function QuoteForm({ action, customers, initial, defaultVat = "22" }: { action: Action; customers: { id: string; name: string }[]; initial?: QuoteFormInitial; defaultVat?: string }) {
+export function QuoteForm({ action, customers, initial, defaultVat = "22", catalog }: { action: Action; customers: { id: string; name: string }[]; initial?: QuoteFormInitial; defaultVat?: string; catalog?: QuoteCatalog }) {
   const { state, pending, onSubmit } = useFormAction(action);
   const [lines, setLines] = useState<Line[]>(linesFromItems(initial?.items, defaultVat));
+  const [customerId, setCustomerId] = useState(initial?.customerId ?? "");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [terms, setTerms] = useState(initial?.terms ?? "");
+  const [hint, setHint] = useState<string | null>(null);
   const payload = useMemo(() => linesToPayload(lines), [lines]);
+  const isBlank = (ls: Line[]) => ls.length === 1 && !ls[0]!.description.trim();
+  const listId = catalog?.customerLists[customerId];
+
+  const addProduct = (productId: string) => {
+    const p = catalog?.products.find((x) => x.id === productId);
+    if (!p) return;
+    const { cents, fromList } = priceFor(p, listId, catalog!.listPrices);
+    const line: Line = { description: p.description ? `${p.name} — ${p.description}` : p.name, quantity: "1", price: (cents / 100).toFixed(2), discount: "0", vat: String(p.vat_rate) };
+    setLines(isBlank(lines) ? [line] : [...lines, line]);
+    setHint(fromList ? `«${p.name}»: applicato il prezzo del listino ${catalog!.listNames[listId!] ?? ""}` : `«${p.name}»: applicato il prezzo base`);
+  };
+  const applyTemplate = (templateId: string) => {
+    const t = catalog?.templates.find((x) => x.id === templateId);
+    if (!t) return;
+    if (!isBlank(lines) && !window.confirm(`Applicare il modello «${t.name}»? Le righe attuali verranno sostituite.`)) return;
+    setLines(linesFromItems(t.items as LineItemInput[], defaultVat));
+    if (!title.trim() && t.title) setTitle(t.title);
+    if (!notes.trim() && t.notes) setNotes(t.notes);
+    if (!terms.trim() && t.terms) setTerms(t.terms);
+    setHint(`Modello «${t.name}» applicato`);
+  };
   const err = (k: string) => (state && !state.ok ? state.fieldErrors?.[k]?.[0] : undefined);
 
   return (
@@ -81,23 +111,39 @@ export function QuoteForm({ action, customers, initial, defaultVat = "22" }: { a
       <div className="grid max-w-4xl gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="customerId">Cliente *</Label>
-          <Select id="customerId" name="customerId" required defaultValue={initial?.customerId ?? ""}>
+          <Select id="customerId" name="customerId" required value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
             <option value="" disabled>Seleziona…</option>
             {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </Select>
           {err("customerId") && <p className="mt-1 text-xs text-danger">{err("customerId")}</p>}
         </div>
-        <div><Label htmlFor="title">Oggetto</Label><Input id="title" name="title" defaultValue={initial?.title ?? ""} /></div>
+        <div><Label htmlFor="title">Oggetto</Label><Input id="title" name="title" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
         <div><Label htmlFor="issueDate">Data emissione</Label><Input id="issueDate" name="issueDate" type="date" defaultValue={initial?.issueDate ?? new Date().toISOString().slice(0, 10)} /></div>
         <div><Label htmlFor="validUntil">Valido fino al</Label><Input id="validUntil" name="validUntil" type="date" defaultValue={initial?.validUntil ?? ""} /></div>
         <div><Label htmlFor="followUpDate">Promemoria follow-up</Label><Input id="followUpDate" name="followUpDate" type="date" defaultValue={initial?.followUpDate ?? ""} /></div>
+        <CustomFieldsInputs defs={catalog?.fields ?? []} values={initial?.customValues} />
       </div>
+
+      {catalog && (catalog.products.length > 0 || catalog.templates.length > 0) && (
+        <div className="grid max-w-4xl gap-4 rounded-md border border-border p-3 sm:grid-cols-2" data-testid="catalog-tools">
+          {catalog.templates.length > 0 && (
+            <div><Label htmlFor="tpl">Applica un modello</Label>
+              <Select id="tpl" value="" onChange={(e) => applyTemplate(e.target.value)}><option value="">Scegli un modello…</option>{catalog.templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select></div>
+          )}
+          {catalog.products.length > 0 && (
+            <div><Label htmlFor="prod">Aggiungi dal catalogo</Label>
+              <Select id="prod" value="" onChange={(e) => addProduct(e.target.value)}><option value="">Scegli un prodotto o servizio…</option>
+                {catalog.products.map((p) => <option key={p.id} value={p.id}>{p.code ? `${p.code} · ` : ""}{p.name}</option>)}</Select></div>
+          )}
+          {hint && <p role="status" className="text-xs text-muted sm:col-span-2">{hint}</p>}
+        </div>
+      )}
 
       <QuoteLinesEditor lines={lines} onChange={setLines} defaultVat={defaultVat} />
 
       <div className="grid max-w-4xl gap-4 sm:grid-cols-2">
-        <div><Label htmlFor="notes">Note</Label><Textarea id="notes" name="notes" defaultValue={initial?.notes ?? ""} /></div>
-        <div><Label htmlFor="terms">Condizioni</Label><Textarea id="terms" name="terms" defaultValue={initial?.terms ?? ""} /></div>
+        <div><Label htmlFor="notes">Note</Label><Textarea id="notes" name="notes" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+        <div><Label htmlFor="terms">Condizioni</Label><Textarea id="terms" name="terms" value={terms} onChange={(e) => setTerms(e.target.value)} /></div>
       </div>
       {state && !state.ok && <Alert>{state.error}</Alert>}
       <Button disabled={pending}>{pending ? "Salvataggio…" : "Salva preventivo"}</Button>

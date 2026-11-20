@@ -8,6 +8,7 @@ import { getCustomer } from "@/modules/clienti/repository";
 import { updateCustomerAction, deleteCustomerAction } from "@/modules/clienti/actions";
 import { addContactAction, removeContactAction, updateContactAction } from "@/modules/clienti/contacts";
 import { addNoteAction, deleteNoteAction } from "@/modules/clienti/notes";
+import { listFieldDefs, listPriceLists } from "@/modules/settore/queries";
 import { CustomerForm } from "@/modules/clienti/ui/customer-form";
 import { TimelineSection } from "@/modules/clienti/ui/timeline-section";
 import { listMembers, nameMap } from "@/modules/organizzazioni/queries";
@@ -32,6 +33,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
   const orgId = ctx.org.organizationId;
   const customer = await getCustomer(db, orgId, id);
   if (!customer) notFound();
+  const [fieldDefs, priceLists] = await Promise.all([listFieldDefs(db, orgId, "customer", true), listPriceLists(db, orgId)]);
 
   const [{ data: quotes }, { data: contacts }, { data: tasks }, { data: docs }, { data: notes }, members] = await Promise.all([
     db.from("quotes").select("id, number, title, status, total_cents, issue_date, follow_up_date").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).order("issue_date", { ascending: false }),
@@ -72,7 +74,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
 
       <div className="grid gap-6 xl:grid-cols-[3fr_2fr]">
         <div className="space-y-6">
-          <Card><h2 className="mb-3 font-medium">Anagrafica e dati fiscali</h2><CustomerForm action={updateCustomerAction.bind(null, id)} customer={customer} readOnly={!canWrite} /></Card>
+          <Card><h2 className="mb-3 font-medium">Anagrafica e dati fiscali</h2><CustomerForm action={updateCustomerAction.bind(null, id)} customer={customer} readOnly={!canWrite} fields={fieldDefs} priceLists={priceLists.filter((l) => l.active || l.id === customer.price_list_id)} /></Card>
 
           <Card>
             <h2 className="mb-3 font-medium">Note</h2>

@@ -9,6 +9,7 @@ const ITEMS = [
   { href: "/impostazioni/profilo", label: "Profilo" },
   { href: "/impostazioni/team", label: "Team" },
   { href: "/impostazioni/preventivi", label: "Preventivi" },
+  { href: "/impostazioni/settore", label: "Settore" },
   { href: "/impostazioni/notifiche", label: "Notifiche" },
   { href: "/impostazioni/ai", label: "AI" },
   { href: "/impostazioni/email", label: "Email" },

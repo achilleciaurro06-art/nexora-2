@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { formatEur } from "@/lib/money";
 import { RemoveButton } from "@/components/ui/remove-button";
 import { deleteQuoteAction } from "@/modules/preventivi/actions";
+import { getSector } from "@/modules/settore/queries";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
 
@@ -17,12 +18,14 @@ const FILTERS: (QuoteStatus | "")[] = ["", "draft", "sent", "accepted", "rejecte
 export default async function QuotesPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const { status } = await searchParams;
   const ctx = await requireContext();
-  const quotes = await listQuotes(await createClient(), ctx.org.organizationId, FILTERS.includes(status as QuoteStatus) ? status : undefined);
+  const db = await createClient();
+  const quotes = await listQuotes(db, ctx.org.organizationId, FILTERS.includes(status as QuoteStatus) ? status : undefined);
+  const { terms } = await getSector(db, ctx.org.organizationId);
   const canDelete = can(ctx.org.role, "data:delete");
   return (
     <>
-      <PageHeader title="Preventivi"
-        actions={can(ctx.org.role, "data:write") ? <Link href="/preventivi/nuovo" className={buttonVariants()}>Nuovo preventivo</Link> : null} />
+      <PageHeader title={terms.quote_plural}
+        actions={can(ctx.org.role, "data:write") ? <Link href="/preventivi/nuovo" className={buttonVariants()}>Nuovo {terms.quote_singular.toLowerCase()}</Link> : null} />
       <nav className="mb-4 flex flex-wrap gap-2" aria-label="Filtro stato">
         {FILTERS.map((f) => (
           <Link key={f || "all"} href={f ? `/preventivi?status=${f}` : "/preventivi"} className={buttonVariants({ variant: (status ?? "") === f ? "default" : "outline", size: "sm" })}>
