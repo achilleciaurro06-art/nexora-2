@@ -134,11 +134,11 @@ test("attività: aperte, completate e follow-up nella scheda", async ({ page }) 
   sql(`insert into public.tasks (organization_id, title, customer_id, status, completed_at) values ('${o}', 'Sopralluogo fatto', '${id}', 'done', now())`);
   sql(`update public.quotes set follow_up_date = current_date + 3 where customer_id = '${id}' and title = 'Impianto D'`);
   await page.goto(`${url}?tab=attivita`);
-  await expect(page.getByRole("link", { name: "Richiamare Bianchi" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Sopralluogo fatto" })).toBeVisible();
-  await expect(page.getByText(/Follow-up dei preventivi/)).toBeVisible();
-  await expect(page.getByText(/arriveranno con la fase dedicata/).first()).toBeVisible();
-  await page.getByRole("link", { name: "Richiamare Bianchi" }).click();
+  await expect(page.getByRole("link", { name: "Richiamare Bianchi", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Sopralluogo fatto", exact: true })).toBeVisible();
+  await expect(page.getByTestId("customer-followups")).toContainText(/follow-up il \d{2}\/\d{2}\/\d{4}/);
+  await expect(page.getByTestId("quick-create").getByRole("link", { name: "Registra chiamata" })).toBeVisible();
+  await page.getByRole("link", { name: "Richiamare Bianchi", exact: true }).click();
   await expect(page).toHaveURL(/\/attivita\/[0-9a-f-]{36}$/);
 });
 

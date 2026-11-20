@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { bucketTasks } from "@/modules/attivita/buckets";
 import { groupByDay, parseTimelineFilter, eventHref } from "@/modules/clienti/timeline";
-import { taskSchema, dueAtFromDate } from "@/modules/attivita/schemas";
+import { taskSchema, dueAtFromParts } from "@/modules/attivita/schemas";
 
 const now = new Date("2026-06-10T10:00:00Z");
 const t = (status: string, due: string | null) => ({ status, due_at: due });
@@ -58,6 +58,8 @@ describe("taskSchema", () => {
     expect(taskSchema.safeParse({ title: "x", customerId: "not-a-uuid" }).success).toBe(false);
     expect(taskSchema.safeParse({ title: "x", dueDate: "domani" }).success).toBe(false);
     expect(taskSchema.safeParse({ title: "", }).success).toBe(false);
-    expect(dueAtFromDate(null)).toBeNull();
+    expect(dueAtFromParts(null, null)).toEqual({ dueAt: null, hasTime: false });
+    expect(dueAtFromParts("2026-07-15", null)).toEqual({ dueAt: "2026-07-15T07:00:00.000Z", hasTime: false }); // 09:00 a Roma, indipendente dal fuso del server
+    expect(dueAtFromParts("2026-07-15", "14:30")).toEqual({ dueAt: "2026-07-15T12:30:00.000Z", hasTime: true });
   });
 });

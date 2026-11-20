@@ -127,3 +127,29 @@ Superati: 74 test unitari (11 file), 98 controlli SQL su RLS/ruoli/isolamento/no
 - Le fatture non si modificano (si rimuove e si reinserisce); nessuna nota di credito, scadenze di pagamento o solleciti; incasso solo totale (niente pagamenti parziali).
 - I preventivi di un cliente archiviato restano visibili in elenchi, follow-up e statistiche dei preventivi (sono trattative reali), contrassegnati «(cliente archiviato)».
 - La dashboard usa ancora il proprio calcolo per periodo; la sua riscrittura su aggregazioni SQL è prevista in Fase 9.
+
+---
+
+## Aggiornamento – Fase 5: attività, appuntamenti, chiamate, follow-up e centro Promemoria (branch `feature/completamento-funzionale-v2`, NON in produzione)
+
+**Fatto e verificato (DB, unit, E2E in browser):**
+- **Attività evolute**: tipologie configurabili da Impostazioni → Settore (di base: generica, telefonata, invio/preparazione materiale, altro; se ne aggiungono senza toccare il database), referente, ora di scadenza, durata, note interne, promemoria a scelta (all'ora, 15 min, 1 ora, 1 o 2 giorni prima). Elenco con ricerca, filtri (stato, tipologia, cliente, responsabile, priorità) e ordinamento; tre viste: per scadenza, elenco, per data. Creazione dalla scheda cliente.
+- **Appuntamenti**: titolo, cliente e referente, data, inizio/fine, luogo, responsabile, partecipanti, note interne, stato (programmato/completato/annullato), promemoria che segue lo spostamento. **Calendario mese/settimana/giorno** navigabile + elenco imminenti/passati; completa, annulla, riapri, sposta; scheda cliente a un clic.
+- **Registro chiamate (manuale)**: entrata/uscita, cliente e referente, collaboratore, data e ora, durata, esito (risposto, nessuna risposta, occupato, da richiamare, interessato, non interessato, altro), note, e **prossimo contatto che genera il follow-up** nella stessa transazione. Nessuna integrazione telefonica.
+- **Follow-up con sei stati** (Da fare, Programmato, In corso, In attesa, Completato, Annullato): ogni stato ha un significato definito (visibile in app); transizioni imposte dal database (i chiusi si possono solo riaprire in «Da fare»); **cronologia scritta solo dal database** (stati, note, riprogrammazioni con data precedente e nuova); riprogrammazione con motivo; in ritardo ben riconoscibile; creabile da attività, chiamata, preventivo o cliente.
+- **Centro Promemoria**: viste Oggi / In ritardo / Prossimi (14 giorni) / Completati con contatori dinamici, «richiedono azione», urgenti, telefonate da fare, filtri per responsabile, tipologia e priorità, ordinamento per scadenza, azioni rapide (completa, riprogramma, modifica) che agiscono sul modulo di origine. Legge la vista SQL `agenda_items` (attività, follow-up, appuntamenti, follow-up dei preventivi): **nessun dato duplicato**; ogni elemento sta in una sola vista. Distingue «Da fare ora» da «Programmato».
+- **Integrazioni**: scheda cliente (prossimo appuntamento e follow-up, creazione rapida, chiamate, storico cronologico, ultimo contatto che considera chiamate e appuntamenti); dashboard («lavoro di oggi»: da completare oggi, scaduti, follow-up da effettuare, appuntamenti a 7 giorni, carico di lavoro per responsabile) con numeri dai dati reali; Copilot (nuovi blocchi agenda e chiamate, profilo cliente con chiamate/appuntamenti/follow-up, clienti senza contatti recenti e follow-up in ritardo) con le stesse regole di accesso; clienti archiviati esclusi dai selettori ma storico consultabile (il database vieta nuovi record su archiviati).
+- **Notifiche interne**: nuovi tipi (follow-up da eseguire, appuntamento imminente, promemoria anche per gli appuntamenti), preferenze per tipo, idempotenti, stato di lettura. Corretto un difetto: la pagina Notifiche poteva non mostrare subito gli avvisi appena generati.
+- **Fuso orario**: istanti in UTC, orari inseriti e mostrati nel fuso dell'azienda (Europe/Rome) con gestione di ora legale e mezzanotte; corretto anche il raggruppamento per giorno della cronologia cliente (prima usava il fuso del server).
+- Predisposto per la futura creazione di attività da parte dell'AI: le proposte del Copilot passano da `apply.ts` e dalle stesse tabelle/regole (nessuna scorciatoia).
+
+**Migrazione:** `20261119000020_agenda_followups.sql` (additiva). Tabelle: `task_types`, `appointments`, `appointment_participants`, `follow_ups`, `follow_up_events`, `call_logs`; colonne nuove su `tasks` (tipologia, referente, durata, note, ora) e `reminders` (appuntamento, scarto); vista `agenda_items`; funzioni `log_call`, `set_follow_up_status`, `reschedule_follow_up`; sostituisce `refresh_my_notifications`, `customer_delete_blockers`, `delete_customer_permanently`, `customer_commercial_summary`. Dopo la 019; **non applicata in produzione**.
+
+**Test:** 332 controlli SQL (+91 in `70_agenda.sql`), 159 unit (+37), 78 E2E (+13), tsc/eslint/build puliti. I test hanno fatto emergere e correggere: una funzione trigger che non poteva servire due tabelle, un permesso mancante in `log_call`, la race delle notifiche.
+
+**Limiti noti:**
+- **Nessuna notifica email né push**: sono solo interne e si generano all'apertura dell'app (nessun cron). Per email/push servono un servizio di invio e una pianificazione: nessuno è attivo, nessun costo introdotto.
+- Il fuso è fisso (Europa/Roma): niente impostazione per azienda.
+- Gli appuntamenti non si sincronizzano con calendari esterni e non c'è la ricorrenza; i partecipanti sono solo collaboratori NEXORA.
+- Le tipologie di attività non includono «follow-up» e «appuntamento» perché hanno moduli propri (con scorciatoie di creazione).
+- Il centro Promemoria mostra al massimo 14 giorni in avanti e gli ultimi 30 giorni di completati.

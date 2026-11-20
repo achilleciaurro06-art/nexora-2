@@ -187,3 +187,26 @@ export async function archiveTemplateAction(id: string, _prev: ActionResult | nu
   revalidatePath("/catalogo/modelli");
   redirect("/catalogo/modelli");
 }
+
+/* ---------------------------------------------------------------- tipologie di attività */
+export async function createTaskTypeAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  const ctx = await requirePermission("settings:manage");
+  const label = String(formData.get("label") ?? "").trim();
+  if (!label || label.length > 60) return fail("Il nome deve avere da 1 a 60 caratteri");
+  const db = await createClient();
+  const { data: existing } = await db.from("task_types").select("key, label").eq("organization_id", ctx.org.organizationId);
+  if ((existing ?? []).some((t) => String(t.label).toLowerCase() === label.toLowerCase())) return fail("Esiste già una tipologia con questo nome");
+  if ((existing ?? []).length >= 30) return fail("Massimo 30 tipologie");
+  const key = slugKey(label, (existing ?? []).map((t) => t.key as string), 30);
+  const { error } = await db.from("task_types").insert({ organization_id: ctx.org.organizationId, key, label, position: (existing ?? []).length });
+  if (error) return fail("Impossibile creare la tipologia");
+  revalidatePath("/impostazioni/settore");
+  return { ok: true };
+}
+
+export async function toggleTaskTypeAction(id: string, active: boolean) {
+  const ctx = await requirePermission("settings:manage");
+  if (!isUuid(id)) return;
+  await (await createClient()).from("task_types").update({ active }).eq("organization_id", ctx.org.organizationId).eq("id", id);
+  revalidatePath("/impostazioni/settore");
+}

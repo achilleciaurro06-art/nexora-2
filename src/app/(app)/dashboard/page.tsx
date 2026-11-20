@@ -6,6 +6,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { formatEur } from "@/lib/money";
 import { isoDayOffset } from "@/lib/dates";
 import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
+import { listAgenda } from "@/modules/agenda/queries";
+import { agendaCounts, applyFilters, bucketAgenda } from "@/modules/agenda/agenda";
+import { addDays, fmtDay, fmtTime, todayIn } from "@/lib/datetime";
+import { listMembers, nameMap } from "@/modules/organizzazioni/queries";
 import { RANGES, countByMonth, monthBuckets, parseRange, periodSummary, quotesByMonth, rangeStart } from "@/modules/dashboard/metrics";
 import { TrendChart } from "@/modules/dashboard/trend-chart";
 import { parseUserPrefs } from "@/modules/impostazioni/settings";
@@ -78,6 +82,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     { label: "Nuovi clienti", value: String(acquiredTotal), sub: "nel periodo" },
     { label: "Attività completate", value: String(doneTasks.count ?? 0), sub: `${tasks.length} ancora aperte` },
   ];
+  // lavoro di oggi: dati reali della vista agenda_items (attività, follow-up, appuntamenti, follow-up dei preventivi)
+  const [agenda, agendaMembers] = await Promise.all([listAgenda(db, orgId, now), listMembers(db, orgId)]);
+  const agendaNames = nameMap(agendaMembers);
+  const ac = agendaCounts(agenda, now);
+  const ab = bucketAgenda(agenda, now);
+  const todayStr = todayIn(now);
+  const nextApps = agenda.filter((i) => i.kind === "appointment" && i.is_open && i.when_date && i.when_date >= todayStr && i.when_date <= addDays(todayStr, 7)).sort((a, b) => (a.when_at ?? "").localeCompare(b.when_at ?? "")).slice(0, 5);
+  const followUpsDue = agenda.filter((i) => (i.kind === "follow_up") && i.is_open && i.when_date && i.when_date <= todayStr).length;
+  const workload = new Map<string, number>();
+  for (const i of [...ab.overdue, ...ab.today, ...ab.upcoming]) workload.set(i.assignee_id ?? "none", (workload.get(i.assignee_id ?? "none") ?? 0) + 1);
+  const workloadRows = [...workload.entries()].map(([k, n]) => ({ name: k === "none" ? "Non assegnati" : (agendaNames.get(k) ?? "—"), n })).sort((a, b) => b.n - a.n);
+  const mineToday = applyFilters(ab.today, { assignee: ctx.userId }).length;
   const recontactRows = (recontact.data ?? []) as { customer_id: string; name: string; last_activity: string; open_quotes: number }[];
 
   return (
@@ -95,6 +111,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           return k.href ? <Link key={k.label} href={k.href}>{body}</Link> : <div key={k.label}>{body}</div>;
         })}
       </div>
+
+      <section aria-label="Il lavoro di oggi" className="mt-8" data-testid="today-work">
+        <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Il lavoro di oggi</h2><Link className="text-sm text-primary hover:underline" href="/promemoria">Apri i promemoria</Link></div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Link href="/promemoria?vista=oggi"><Card className="h-full p-4"><p className="text-sm text-muted">Da completare oggi</p><p className="mt-1 text-xl font-semibold" data-testid="dash-today">{ac.today}</p><p className="mt-0.5 text-xs text-muted">{mineToday} assegnati a te</p></Card></Link>
+          <Link href="/promemoria?vista=ritardo"><Card className={ac.overdue > 0 ? "h-full border-danger p-4" : "h-full p-4"}><p className="text-sm text-muted">Scaduti</p><p className={ac.overdue > 0 ? "mt-1 text-xl font-semibold text-danger" : "mt-1 text-xl font-semibold"} data-testid="dash-overdue">{ac.overdue}</p><p className="mt-0.5 text-xs text-muted">{ac.urgent} urgenti</p></Card></Link>
+          <Link href="/followup"><Card className="h-full p-4"><p className="text-sm text-muted">Follow-up da effettuare</p><p className="mt-1 text-xl font-semibold" data-testid="dash-followups">{followUpsDue}</p><p className="mt-0.5 text-xs text-muted">con data di oggi o passata</p></Card></Link>
+          <Link href="/appuntamenti?vista=elenco"><Card className="h-full p-4"><p className="text-sm text-muted">Appuntamenti (7 giorni)</p><p className="mt-1 text-xl font-semibold" data-testid="dash-appointments">{nextApps.length}</p><p className="mt-0.5 text-xs text-muted">{nextApps[0] ? `Prossimo: ${fmtDay(nextApps[0].when_date!)} ${fmtTime(nextApps[0].when_at!)}` : "nessuno in programma"}</p></Card></Link>
+        </div>
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          <Card>
+            <h3 className="mb-2 text-sm font-medium">Prossimi appuntamenti</h3>
+            {nextApps.length === 0 ? <p className="text-sm text-muted">Nessun appuntamento nei prossimi 7 giorni.</p> : (
+              <ul className="space-y-1 text-sm">{nextApps.map((a) => <li key={a.id} className="flex justify-between gap-3"><Link className="truncate text-primary hover:underline" href={a.href}>{a.title}</Link><span className="shrink-0 text-muted">{fmtDay(a.when_date!)} {fmtTime(a.when_at!)}</span></li>)}</ul>
+            )}
+          </Card>
+          <Card data-testid="workload">
+            <h3 className="mb-2 text-sm font-medium">Carico di lavoro (elementi aperti per responsabile)</h3>
+            {workloadRows.length === 0 ? <p className="text-sm text-muted">Nessun elemento aperto.</p> : (
+              <ul className="space-y-1 text-sm">{workloadRows.map((w) => <li key={w.name} className="flex justify-between gap-3"><span>{w.name}</span><span className="text-muted">{w.n}</span></li>)}</ul>
+            )}
+          </Card>
+        </div>
+      </section>
 
       <section aria-label="Andamento nel periodo" className="mt-8">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

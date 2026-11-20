@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 export const metadata = { title: "Notifiche" };
 
 const KIND_LABEL: Record<string, string> = {
-  task_due_soon: "In scadenza", task_overdue: "Scaduta", quote_followup: "Follow-up", reminder: "Promemoria", task_assigned: "Assegnata a te",
+  task_due_soon: "In scadenza", task_overdue: "Scaduta", quote_followup: "Follow-up preventivo", reminder: "Promemoria", task_assigned: "Assegnata a te", followup_due: "Follow-up", appointment_soon: "Appuntamento",
 };
 
 export default async function NotificationsPage() {
   const ctx = await requireContext();
   const db = await createClient();
+  // layout e pagina si caricano in parallelo: si aggiorna qui (idempotente) perché l'elenco includa subito gli avvisi nuovi
+  await db.rpc("refresh_my_notifications");
   const { data } = await db.from("notifications").select("id, kind, title, body, link, read_at, created_at, organization_id")
     .eq("user_id", ctx.userId).order("created_at", { ascending: false }).limit(100);
   const rows = data ?? [];

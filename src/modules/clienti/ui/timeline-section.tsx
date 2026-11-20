@@ -2,9 +2,10 @@ import Link from "next/link";
 import { createClient } from "@/server/supabase/server";
 import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { fmtTime } from "@/lib/datetime";
 import { TIMELINE_FILTERS, eventHref, groupByDay, parseTimelineFilter, type TimelineEvent } from "../timeline";
 
-const ICON: Record<string, string> = { quote: "📄", task: "✅", document: "📎", contact: "👤", note: "📝", customer: "🏢" };
+const ICON: Record<string, string> = { quote: "📄", task: "✅", document: "📎", contact: "👤", note: "📝", customer: "🏢", appointment: "📅", call: "📞", follow_up: "🔁" };
 
 export async function TimelineSection({ orgId, customerId, filter, names }: { orgId: string; customerId: string; filter?: string; names: Map<string, string> }) {
   const f = parseTimelineFilter(filter);
@@ -37,7 +38,7 @@ export async function TimelineSection({ orgId, customerId, filter, names }: { or
                       <span aria-hidden className="mr-1">{ICON[e.entity] ?? "•"}</span>
                       {href ? <Link className="hover:underline" href={href}>{e.summary}</Link> : e.summary}
                       <span className="ml-2 text-xs text-muted">
-                        {new Date(e.created_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+                        {fmtTime(e.created_at)}
                         {e.actor_id ? ` · ${names.get(e.actor_id) ?? ""}` : ""}
                       </span>
                     </li>

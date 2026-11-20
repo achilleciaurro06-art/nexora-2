@@ -57,7 +57,7 @@ export async function getCommercialSummary(db: SupabaseClient, customerId: strin
   return (data as CommercialSummary | null) ?? null;
 }
 
-export type DeleteBlockers = { quotes: number; invoices: number; documents: number; tasks: number; contacts: number; notes: number };
+export type DeleteBlockers = { quotes: number; invoices: number; documents: number; tasks: number; appointments: number; calls: number; follow_ups: number; contacts: number; notes: number };
 export async function getDeleteBlockers(db: SupabaseClient, customerId: string): Promise<DeleteBlockers | null> {
   const { data } = await db.rpc("customer_delete_blockers", { p_customer: customerId });
   return (data as DeleteBlockers | null) ?? null;

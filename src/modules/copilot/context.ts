@@ -106,6 +106,24 @@ const packs: Record<PackName, (c: Ctx) => Promise<unknown>> = {
       promemoria_entro_7_giorni: (reminders ?? []).map((r) => ({ quando: day(r.remind_at as string), attivita: one(r.tasks as { title: string } | { title: string }[])?.title })),
     };
   },
+  async agenda({ db, orgId, userId }) {
+    const today = new Date().toISOString().slice(0, 10);
+    const until = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
+    const { data } = await db.from("agenda_items").select("kind, title, when_date, when_at, status, priority, assignee_id, customer_name, customer_archived, type_key")
+      .eq("organization_id", orgId).eq("is_open", true).lte("when_date", until).order("when_date").limit(40);
+    const rows = (data ?? []).map((i) => ({
+      tipo: i.kind === "task" && i.type_key === "call" ? "telefonata" : i.kind === "task" ? "attività" : i.kind === "follow_up" ? "follow-up" : i.kind === "appointment" ? "appuntamento" : "follow-up preventivo",
+      titolo: i.title, data: i.when_date, stato: i.status, in_ritardo: (i.when_date as string) < today, priorita: i.priority, mio: i.assignee_id === userId, cliente: i.customer_name, cliente_archiviato: i.customer_archived || undefined,
+    }));
+    return { nota: "Elementi aperti entro 14 giorni, compresi gli appuntamenti non ancora chiusi e i follow-up in ritardo; letti dalle tabelle reali.", in_ritardo: rows.filter((r) => r.in_ritardo).length, elementi: rows };
+  },
+  async calls({ db, orgId }) {
+    const { data } = await db.from("call_logs").select("called_at, direction, outcome, duration_seconds, notes, customers(name)").eq("organization_id", orgId).order("called_at", { ascending: false }).limit(15);
+    return (data ?? []).map((c) => ({
+      quando: day(c.called_at as string), cliente: one(c.customers as { name: string } | { name: string }[])?.name, direzione: c.direction === "inbound" ? "in entrata" : "in uscita",
+      esito: c.outcome, durata_min: c.duration_seconds == null ? null : Math.round((c.duration_seconds as number) / 60), note: String(c.notes ?? "").slice(0, 120),
+    }));
+  },
   async price_anomalies({ db, orgId }) {
     const { data: quotes } = await db.from("quotes").select("id, number, status, quote_items(id, description, unit_price_cents, discount_percent)")
       .eq("organization_id", orgId).is("deleted_at", null).in("status", ["draft", "sent"]).order("created_at", { ascending: false }).limit(8);
@@ -148,7 +166,7 @@ const packs: Record<PackName, (c: Ctx) => Promise<unknown>> = {
 
 async function customerProfile(c: Ctx, id: string, name: string) {
   const { db, orgId } = c;
-  const [{ data: cust }, { data: contacts }, { data: quotes }, { data: tasks }, { data: notes }, { data: docs }, { data: events }] = await Promise.all([
+  const [{ data: cust }, { data: contacts }, { data: quotes }, { data: tasks }, { data: notes }, { data: docs }, { data: events }, { data: callRows }, { data: appRows }, { data: fuRows }] = await Promise.all([
     db.from("customers").select("status, email, phone, city, vat_number, notes, created_at, archived_at").eq("organization_id", orgId).eq("id", id).maybeSingle(),
     db.from("customer_contacts").select("full_name, job_title, email, phone, notes").eq("organization_id", orgId).eq("customer_id", id).limit(5),
     db.from("quotes").select("number, title, status, total_cents, issue_date, follow_up_date, quote_items(description, quantity, unit_price_cents)").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).order("issue_date", { ascending: false }).limit(8),
@@ -156,6 +174,9 @@ async function customerProfile(c: Ctx, id: string, name: string) {
     db.from("customer_notes").select("body, created_at").eq("organization_id", orgId).eq("customer_id", id).order("created_at", { ascending: false }).limit(5),
     db.from("documents").select("name, mime_type").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).limit(5),
     db.from("activity_events").select("summary, created_at").eq("organization_id", orgId).eq("customer_id", id).order("created_at", { ascending: false }).limit(10),
+    db.from("call_logs").select("called_at, direction, outcome, notes").eq("organization_id", orgId).eq("customer_id", id).order("called_at", { ascending: false }).limit(5),
+    db.from("appointments").select("title, starts_at, status, location").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).order("starts_at", { ascending: false }).limit(6),
+    db.from("follow_ups").select("title, status, due_on, reason").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).order("due_on", { ascending: false }).limit(6),
   ]);
   const { data: summary } = await db.rpc("customer_commercial_summary", { p_customer: id });
   const sm = (summary ?? null) as Record<string, number | string | null> | null;
@@ -179,6 +200,9 @@ async function customerProfile(c: Ctx, id: string, name: string) {
     attivita: (tasks ?? []).map((t) => ({ titolo: t.title, stato: t.status, scadenza: day(t.due_at as string | null), priorita: t.priority })),
     note: (notes ?? []).map((n) => ({ data: day(n.created_at as string), testo: String(n.body).slice(0, 200) })),
     documenti: (docs ?? []).map((d) => ({ nome: d.name, tipo: d.mime_type })),
+    chiamate: (callRows ?? []).map((c) => ({ quando: day(c.called_at as string), direzione: c.direction === "inbound" ? "in entrata" : "in uscita", esito: c.outcome, note: String(c.notes ?? "").slice(0, 120) })),
+    appuntamenti: (appRows ?? []).map((a) => ({ titolo: a.title, quando: day(a.starts_at as string), stato: a.status, luogo: a.location })),
+    follow_up: (fuRows ?? []).map((f) => ({ titolo: f.title, stato: f.status, data: f.due_on, motivo: f.reason })),
     storico_recente: (events ?? []).map((e) => ({ data: day(e.created_at as string), evento: e.summary })),
   };
 }

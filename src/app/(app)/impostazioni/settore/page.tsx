@@ -1,7 +1,8 @@
 import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
 import { can } from "@/server/auth/permissions";
-import { applyPresetAction, createFieldAction, toggleFieldAction, updateSectorAction } from "@/modules/settore/actions";
+import { applyPresetAction, createFieldAction, createTaskTypeAction, toggleFieldAction, toggleTaskTypeAction, updateSectorAction } from "@/modules/settore/actions";
+import { listTaskTypes } from "@/modules/agenda/queries";
 import { getSector, listFieldDefs } from "@/modules/settore/queries";
 import { SECTORS, SECTOR_KEYS } from "@/modules/settore/presets";
 import { DEFAULT_TERMS, TERM_KEYS } from "@/modules/settore/terms";
@@ -18,7 +19,7 @@ export default async function SectorSettingsPage() {
   const ctx = await requireContext();
   const canEdit = can(ctx.org.role, "settings:manage");
   const db = await createClient();
-  const [{ sector, rawTerms }, defs] = await Promise.all([getSector(db, ctx.org.organizationId), listFieldDefs(db, ctx.org.organizationId)]);
+  const [{ sector, rawTerms }, defs, taskTypes] = await Promise.all([getSector(db, ctx.org.organizationId), listFieldDefs(db, ctx.org.organizationId), listTaskTypes(db, ctx.org.organizationId)]);
   return (
     <div className="space-y-4">
       <Card>
@@ -77,6 +78,24 @@ export default async function SectorSettingsPage() {
               <div className="sm:col-span-2"><Label htmlFor="options">Scelte (solo per «Scelta da elenco», una per riga)</Label><Textarea id="options" name="options" rows={3} /></div>
             </ActionForm>
           </div>
+        )}
+      </Card>
+
+      <Card>
+        <h2 className="mb-1 font-medium">Tipologie di attività</h2>
+        <p className="mb-4 text-sm text-muted">Le tipologie classificano le attività (telefonata, invio materiale…). Puoi aggiungerne di tue; quelle di base non si eliminano ma si possono disattivare.</p>
+        <ul className="mb-4 divide-y divide-border text-sm" data-testid="task-types">
+          {taskTypes.map((t) => (
+            <li key={t.id} className="flex items-center justify-between gap-2 py-1.5">
+              <span className={t.active ? "" : "text-muted line-through"}>{t.label}{t.system ? <span className="text-xs text-muted"> · di base</span> : null}</span>
+              {canEdit && <form action={toggleTaskTypeAction.bind(null, t.id, !t.active)}><Button variant="ghost" size="sm">{t.active ? "Disattiva" : "Riattiva"}</Button></form>}
+            </li>
+          ))}
+        </ul>
+        {canEdit && (
+          <ActionForm action={createTaskTypeAction} submitLabel="Aggiungi tipologia" successMessage="Tipologia aggiunta">
+            <div><Label htmlFor="tt-label">Nome della tipologia</Label><Input id="tt-label" name="label" maxLength={60} required placeholder="Es. Sopralluogo" /></div>
+          </ActionForm>
         )}
       </Card>
     </div>

@@ -8,6 +8,7 @@ import { listMembers } from "@/modules/organizzazioni/queries";
 import { createTaskAction } from "@/modules/attivita/actions";
 import { TaskEditor } from "@/modules/attivita/ui/task-editor";
 import { PageHeader } from "@/components/ui/card";
+import { listTaskTypes } from "@/modules/agenda/queries";
 
 export const metadata = { title: "Nuova attività" };
 
@@ -17,9 +18,10 @@ export default async function NewTaskPage({ searchParams }: { searchParams: Prom
   if (!can(ctx.org.role, "data:write")) redirect("/attivita");
   const db = await createClient();
   const orgId = ctx.org.organizationId;
-  const [customers, members, { data: quotes }] = await Promise.all([
+  const [customers, members, types, { data: quotes }] = await Promise.all([
     listCustomers(db, orgId),
     listMembers(db, orgId),
+    listTaskTypes(db, orgId, true),
     db.from("quotes").select("id, number, title, customer_id").eq("organization_id", orgId).is("deleted_at", null).order("created_at", { ascending: false }).limit(300),
   ]);
   // precompilazione da cliente o preventivo (i valori vengono comunque riverificati dal server in salvataggio)
@@ -33,7 +35,7 @@ export default async function NewTaskPage({ searchParams }: { searchParams: Prom
         defaults={{ customerId, quoteId: quote?.id as string | undefined, assigneeId: ctx.userId, title: quote ? `Follow-up preventivo ${quote.number}` : undefined }}
         customers={customers.map((c) => ({ id: c.id, name: c.name }))}
         quotes={(quotes ?? []) as { id: string; number: string; title: string | null; customer_id: string }[]}
-        members={members}
+        members={members} types={types}
       />
     </>
   );

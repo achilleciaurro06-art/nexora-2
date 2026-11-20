@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { dueAtFromDate } from "@/modules/attivita/schemas";
+import { dueAtFromParts } from "@/modules/attivita/schemas";
 import { resolveByName } from "./packs";
 
 type Result = { ok: true; redirectTo?: string } | { ok: false; error: string };
@@ -44,7 +44,7 @@ export async function applySuggestion(args: {
     if (kind === "customer_followup" && !c) return { ok: false, error: "Cliente non trovato o ambiguo: crea l'attività a mano dalla scheda cliente." };
     if (c && (!customerId || customerId === c.id)) customerId = c.id;
     const { error } = await db.from("tasks").insert({
-      organization_id: orgId, title, description: str("description") ?? null, due_at: dueAtFromDate(dueRaw ?? null),
+      organization_id: orgId, title, description: str("description") ?? null, due_at: dueAtFromParts(dueRaw ?? null, null).dueAt,
       customer_id: customerId, quote_id: customerId && q && q.customer_id === customerId ? quoteId : null, created_by: userId, assignee_id: userId,
     });
     return error ? { ok: false, error: "Impossibile creare l'attività" } : { ok: true, redirectTo: "/attivita" };

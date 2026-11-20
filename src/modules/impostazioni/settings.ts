@@ -74,14 +74,16 @@ export const NOTIFICATION_KINDS = [
   { key: "quote_followup", label: "Follow-up dei preventivi" },
   { key: "reminder", label: "Promemoria programmati" },
   { key: "task_assigned", label: "Attività assegnate a me" },
+  { key: "followup", label: "Follow-up da eseguire" },
+  { key: "appointment", label: "Appuntamenti imminenti" },
 ] as const;
 
 export const userPrefsSchema = z.object({
   notifications: z.object({
     task_due_soon: z.boolean().default(true), task_overdue: z.boolean().default(true), quote_followup: z.boolean().default(true),
-    reminder: z.boolean().default(true), task_assigned: z.boolean().default(true),
+    reminder: z.boolean().default(true), task_assigned: z.boolean().default(true), followup: z.boolean().default(true), appointment: z.boolean().default(true),
     due_soon_hours: z.number().int().min(1).max(168).default(24),
-  }).default({ task_due_soon: true, task_overdue: true, quote_followup: true, reminder: true, task_assigned: true, due_soon_hours: 24 }),
+  }).default({ task_due_soon: true, task_overdue: true, quote_followup: true, reminder: true, task_assigned: true, followup: true, appointment: true, due_soon_hours: 24 }),
   appearance: z.object({
     dashboard_range: z.enum(["30", "90", "365", "all"]).default("365"),
   }).default({ dashboard_range: "365" }),

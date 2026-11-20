@@ -7,6 +7,9 @@ import { isUuid } from "@/lib/ids";
 import { listCustomerOptions } from "@/modules/clienti/repository";
 import { listMembers, nameMap } from "@/modules/organizzazioni/queries";
 import { deleteTaskAction, setTaskStatusAction, updateTaskAction } from "@/modules/attivita/actions";
+import { listTaskTypes } from "@/modules/agenda/queries";
+import { getReminderOffset } from "@/modules/agenda/reminders";
+import { fmtDate, fmtDateTime, utcToZonedParts } from "@/lib/datetime";
 import { TaskEditor } from "@/modules/attivita/ui/task-editor";
 import { PRIORITY_LABEL, STATUS_LABEL } from "@/modules/attivita/schemas";
 import { Badge, Card, PageHeader } from "@/components/ui/card";
@@ -21,13 +24,15 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   const db = await createClient();
   const orgId = ctx.org.organizationId;
   const { data: task } = await db.from("tasks")
-    .select("id, title, description, status, priority, due_at, assignee_id, assigned_by, customer_id, quote_id, created_by, created_at, completed_at, customers(name, deleted_at), quotes(number, deleted_at)")
+    .select("id, title, description, status, priority, due_at, assignee_id, assigned_by, customer_id, quote_id, created_by, created_at, completed_at, due_has_time, contact_id, type_id, duration_minutes, notes, customers(name, deleted_at), quotes(number, deleted_at)")
     .eq("organization_id", orgId).eq("id", id).is("deleted_at", null).maybeSingle();
   if (!task) notFound();
 
-  const [customers, members, { data: quotes }, { data: events }] = await Promise.all([
+  const [customers, members, types, reminderOffset, { data: quotes }, { data: events }] = await Promise.all([
     listCustomerOptions(db, orgId, task.customer_id as string | null),
     listMembers(db, orgId),
+    listTaskTypes(db, orgId),
+    getReminderOffset(db, orgId, { taskId: id }),
     db.from("quotes").select("id, number, title, customer_id").eq("organization_id", orgId).is("deleted_at", null).order("created_at", { ascending: false }).limit(300),
     db.from("activity_events").select("id, summary, created_at, actor_id").eq("organization_id", orgId).eq("entity", "task").eq("entity_id", id).order("created_at", { ascending: false }).limit(20),
   ]);
@@ -42,7 +47,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
     <>
       <PageHeader
         title={task.title as string}
-        description={`Creata il ${new Date(task.created_at as string).toLocaleDateString("it-IT")}${task.created_by ? ` da ${names.get(task.created_by as string) ?? "—"}` : ""}`}
+        description={`Creata il ${fmtDate(task.created_at as string)}${task.created_by ? ` da ${names.get(task.created_by as string) ?? "—"}` : ""}`}
         actions={
           <div className="flex flex-wrap gap-2">
             {canWrite && (
@@ -58,7 +63,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
         <Badge>{STATUS_LABEL[task.status as keyof typeof STATUS_LABEL]}</Badge>
         <Badge>Priorità {PRIORITY_LABEL[task.priority as keyof typeof PRIORITY_LABEL].toLowerCase()}</Badge>
-        {task.due_at && <Badge className={overdue ? "border-danger text-danger" : ""}>{overdue ? "Scaduta il " : "Scade il "}{new Date(task.due_at as string).toLocaleDateString("it-IT")}</Badge>}
+        {task.due_at && <Badge className={overdue ? "border-danger text-danger" : ""}>{overdue ? "Scaduta il " : "Scade il "}{task.due_has_time ? fmtDateTime(task.due_at as string) : fmtDate(task.due_at as string)}</Badge>}
         {task.assignee_id && <Badge>Assegnata a {names.get(task.assignee_id as string) ?? "—"}</Badge>}
         {customer && ((customer as { deleted_at: string | null }).deleted_at
           ? <span className="text-muted">Cliente: {(customer as { name: string }).name} (rimosso)</span>
@@ -73,12 +78,14 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
             mode="edit" action={updateTaskAction.bind(null, id)} readOnly={!canWrite}
             defaults={{
               title: task.title as string, description: task.description as string | null, priority: task.priority as string, status: task.status as string,
-              dueDate: task.due_at ? (task.due_at as string).slice(0, 10) : null, assigneeId: task.assignee_id as string | null,
+              dueDate: task.due_at ? utcToZonedParts(task.due_at as string).date : null, dueTime: task.due_at && task.due_has_time ? utcToZonedParts(task.due_at as string).time : null,
+              contactId: task.contact_id as string | null, typeId: task.type_id as string | null, durationMinutes: task.duration_minutes as number | null, notes: task.notes as string | null,
+              reminder: reminderOffset === null ? "" : String(reminderOffset), assigneeId: task.assignee_id as string | null,
               customerId: task.customer_id as string | null, quoteId: task.quote_id as string | null,
             }}
             customers={customers.map((c) => ({ id: c.id, name: c.name }))}
             quotes={(quotes ?? []) as { id: string; number: string; title: string | null; customer_id: string }[]}
-            members={members}
+            members={members} types={types}
           />
         </Card>
         <Card className="h-fit">
@@ -88,7 +95,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
               {(events ?? []).map((e) => (
                 <li key={e.id as number}>
                   <p>{e.summary as string}</p>
-                  <p className="text-xs text-muted">{new Date(e.created_at as string).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}{e.actor_id ? ` · ${names.get(e.actor_id as string) ?? ""}` : ""}</p>
+                  <p className="text-xs text-muted">{fmtDateTime(e.created_at as string)}{e.actor_id ? ` · ${names.get(e.actor_id as string) ?? ""}` : ""}</p>
                 </li>
               ))}
             </ul>

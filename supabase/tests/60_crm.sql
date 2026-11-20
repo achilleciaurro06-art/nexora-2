@@ -129,7 +129,9 @@ select c6.denies('a customer with quotes and invoices cannot be deleted', $$sele
 select c6.check('…and it is still there with all its data', (select count(*) from public.quotes where customer_id = 'a6c00000-0000-0000-0000-000000000001') = 5);
 reset role;
 -- vincoli anche per attività e documenti
+update public.customers set archived_at = null where id = 'a6c00000-0000-0000-0000-000000000002';
 insert into public.tasks (organization_id, title, customer_id, created_by) values (:'oa', 'T', 'a6c00000-0000-0000-0000-000000000002', 'a6000000-0000-0000-0000-00000000000a');
+update public.customers set archived_at = now() where id = 'a6c00000-0000-0000-0000-000000000002';
 set local role authenticated;
 set local request.jwt.claim.sub = 'a6000000-0000-0000-0000-00000000000a';
 select c6.denies('a customer with tasks cannot be deleted', $$select public.delete_customer_permanently('a6c00000-0000-0000-0000-000000000002')$$);

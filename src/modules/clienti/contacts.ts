@@ -41,3 +41,11 @@ export async function removeContactAction(customerId: string, contactId: string)
     .eq("organization_id", ctx.org.organizationId).eq("customer_id", customerId).eq("id", contactId);
   revalidatePath(`/clienti/${customerId}`);
 }
+
+/** Referenti di un cliente (per i selettori dei moduli): la lettura è comunque protetta dalla RLS dell'organizzazione. */
+export async function listContactsAction(customerId: string): Promise<{ id: string; name: string }[]> {
+  const ctx = await requirePermission("data:read");
+  if (!isUuid(customerId)) return [];
+  const { data } = await (await createClient()).from("customer_contacts").select("id, full_name").eq("organization_id", ctx.org.organizationId).eq("customer_id", customerId).order("full_name").limit(100);
+  return (data ?? []).map((c) => ({ id: c.id as string, name: c.full_name as string }));
+}

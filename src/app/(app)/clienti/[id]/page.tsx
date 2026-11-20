@@ -16,6 +16,11 @@ import { InvoiceActions, InvoiceForm } from "@/modules/fatture/ui/invoice-form";
 import { listInvoices } from "@/modules/fatture/queries";
 import { listMembers, nameMap } from "@/modules/organizzazioni/queries";
 import { PRIORITY_LABEL } from "@/modules/attivita/schemas";
+import { fmtDate, fmtDateTime, fmtDay, todayIn } from "@/lib/datetime";
+import { APPOINTMENT_STATUS_LABEL, CALL_DIRECTION_LABEL, CALL_OUTCOME_LABEL, type CallOutcome } from "@/modules/agenda/types";
+import { FollowUpBadge } from "@/modules/followup/ui/follow-up-status";
+import { OPEN_STATUSES, isOverdue, type FollowUpStatus } from "@/modules/followup/states";
+import { eventHref } from "@/modules/clienti/timeline";
 import { Alert, Badge, Card, PageHeader, Table } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { RemoveButton } from "@/components/ui/remove-button";
@@ -220,15 +225,28 @@ export default async function CustomerPage({ params, searchParams }: { params: P
     );
   }
 
-  /* ------------------------------------------------------------------ tab: attività */
+  /* ------------------------------------------------------------------ tab: attività, appuntamenti, chiamate, follow-up */
   async function ActivityTab() {
-    const [{ data: tasks }, { data: quotes }] = await Promise.all([
-      db.from("tasks").select("id, title, status, priority, due_at, completed_at, assignee_id").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).order("due_at", { nullsFirst: false }).limit(100),
+    const nowIso = new Date().toISOString();
+    const [{ data: tasks }, { data: apps }, { data: calls }, { data: fus }, { data: quotes }, { data: history }] = await Promise.all([
+      db.from("tasks").select("id, title, status, priority, due_at, due_has_time, completed_at, assignee_id, task_types(label)").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).order("due_at", { nullsFirst: false }).limit(100),
+      db.from("appointments").select("id, title, starts_at, ends_at, status, location").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).order("starts_at", { ascending: false }).limit(50),
+      db.from("call_logs").select("id, called_at, direction, outcome, duration_seconds, user_id, follow_up_id").eq("organization_id", orgId).eq("customer_id", id).order("called_at", { ascending: false }).limit(20),
+      db.from("follow_ups").select("id, title, status, due_on, assignee_id").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).order("due_on").limit(100),
       db.from("quotes").select("id, number, status, follow_up_date").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).in("status", ["draft", "sent"]).not("follow_up_date", "is", null).order("follow_up_date"),
+      db.from("activity_events").select("id, entity, entity_id, summary, created_at, actor_id").eq("organization_id", orgId).eq("customer_id", id).in("entity", ["task", "appointment", "call", "follow_up"]).order("created_at", { ascending: false }).limit(30),
     ]);
     const now = new Date();
     const open = (tasks ?? []).filter((t) => t.status === "todo" || t.status === "in_progress");
     const done = (tasks ?? []).filter((t) => t.status === "done" || t.status === "cancelled");
+    const upcomingApps = (apps ?? []).filter((a) => a.status === "scheduled" && (a.ends_at as string) >= nowIso).sort((x, y) => (x.starts_at as string).localeCompare(y.starts_at as string));
+    const pastApps = (apps ?? []).filter((a) => !upcomingApps.includes(a));
+    const openFus = (fus ?? []).filter((f) => OPEN_STATUSES.includes(f.status as FollowUpStatus));
+    const closedFus = (fus ?? []).filter((f) => !OPEN_STATUSES.includes(f.status as FollowUpStatus));
+    const today = todayIn(now);
+    const nextApp = upcomingApps[0];
+    const nextFu = openFus[0];
+    const one = <T,>(v: T | T[] | null | undefined) => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
     const Row = ({ t }: { t: NonNullable<typeof tasks>[number] }) => {
       const isDone = t.status === "done" || t.status === "cancelled";
       const overdue = !isDone && t.due_at && new Date(t.due_at as string) < now;
@@ -236,25 +254,88 @@ export default async function CustomerPage({ params, searchParams }: { params: P
         <li className="flex items-center justify-between gap-2">
           <Link className={`min-w-0 truncate hover:underline ${isDone ? "text-muted line-through" : ""}`} href={`/attivita/${t.id}`}>{t.title as string}</Link>
           <span className={`shrink-0 text-xs ${overdue ? "text-danger" : "text-muted"}`}>
-            {t.assignee_id ? `${names.get(t.assignee_id as string) ?? ""} · ` : ""}{isDone && t.completed_at ? `chiusa il ${dt(t.completed_at as string)}` : t.due_at ? `scadenza ${dt(t.due_at as string)}` : PRIORITY_LABEL[t.priority as keyof typeof PRIORITY_LABEL]}
+            {one(t.task_types as { label: string } | { label: string }[] | null)?.label ?? "Attività"} · {t.assignee_id ? `${names.get(t.assignee_id as string) ?? ""} · ` : ""}{isDone && t.completed_at ? `chiusa il ${fmtDate(t.completed_at as string)}` : t.due_at ? `scadenza ${t.due_has_time ? fmtDateTime(t.due_at as string) : fmtDate(t.due_at as string)}` : PRIORITY_LABEL[t.priority as keyof typeof PRIORITY_LABEL]}
           </span>
         </li>
       );
     };
     return (
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <div className="mb-3 flex items-center justify-between"><h2 className="font-medium">Attività aperte e scadenze</h2>{canWrite && <Link className="text-sm text-primary hover:underline" href={`/attivita/nuova?cliente=${id}`}>+ Nuova</Link>}</div>
-          {open.length === 0 ? <p className="text-sm text-muted">Nessuna attività aperta.</p> : <ul className="space-y-2 text-sm">{open.map((t) => <Row key={t.id as string} t={t} />)}</ul>}
-          <h3 className="mb-2 mt-5 text-sm font-medium">Follow-up dei preventivi</h3>
-          {(quotes ?? []).length === 0 ? <p className="text-sm text-muted">Nessun follow-up programmato.</p> : (
-            <ul className="space-y-1 text-sm">{(quotes ?? []).map((q) => <li key={q.id as string}><Link className="text-primary hover:underline" href={`/preventivi/${q.id}`}>{q.number as string}</Link> → {dt(q.follow_up_date as string)}</li>)}</ul>
+      <div className="space-y-6">
+        {canWrite && (
+          <div className="flex flex-wrap gap-2" data-testid="quick-create">
+            <Link href={`/attivita/nuova?cliente=${id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>Nuova attività</Link>
+            <Link href={`/appuntamenti/nuovo?cliente=${id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>Nuovo appuntamento</Link>
+            <Link href={`/chiamate/nuova?cliente=${id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>Registra chiamata</Link>
+            <Link href={`/followup/nuovo?cliente=${id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>Nuovo follow-up</Link>
+          </div>
+        )}
+        <dl className="grid gap-3 sm:grid-cols-2" data-testid="next-actions">
+          <Card className="p-3"><dt className="text-sm text-muted">Prossimo appuntamento</dt><dd className="mt-0.5 font-medium" data-testid="next-appointment">{nextApp ? <Link className="text-primary hover:underline" href={`/appuntamenti/${nextApp.id}`}>{fmtDateTime(nextApp.starts_at as string)} · {nextApp.title as string}</Link> : <span className="text-muted">Nessuno in programma</span>}</dd></Card>
+          <Card className="p-3"><dt className="text-sm text-muted">Prossimo follow-up</dt><dd className="mt-0.5 font-medium" data-testid="next-followup">{nextFu ? <><Link className="text-primary hover:underline" href={`/followup/${nextFu.id}`}>{fmtDay(nextFu.due_on as string)} · {nextFu.title as string}</Link> <FollowUpBadge status={nextFu.status as FollowUpStatus} overdue={isOverdue(nextFu.status as FollowUpStatus, nextFu.due_on as string, today)} /></> : <span className="text-muted">Nessuno programmato</span>}</dd></Card>
+        </dl>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <h2 className="mb-3 font-medium">Appuntamenti</h2>
+            {(apps ?? []).length === 0 ? <p className="text-sm text-muted">Nessun appuntamento.</p> : (
+              <ul className="space-y-2 text-sm" data-testid="customer-appointments">
+                {[...upcomingApps, ...pastApps].map((a) => (
+                  <li key={a.id as string} className="flex items-center justify-between gap-2">
+                    <Link className={`min-w-0 truncate hover:underline ${a.status === "cancelled" ? "text-muted line-through" : ""}`} href={`/appuntamenti/${a.id}`}>{a.title as string}</Link>
+                    <span className="shrink-0 text-xs text-muted">{fmtDateTime(a.starts_at as string)} · {APPOINTMENT_STATUS_LABEL[a.status as keyof typeof APPOINTMENT_STATUS_LABEL]}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+          <Card>
+            <h2 className="mb-3 font-medium">Chiamate</h2>
+            {(calls ?? []).length === 0 ? <p className="text-sm text-muted">Nessuna chiamata registrata.</p> : (
+              <ul className="space-y-2 text-sm" data-testid="customer-calls">
+                {(calls ?? []).map((c) => (
+                  <li key={c.id as string} className="flex items-center justify-between gap-2">
+                    <span>{CALL_DIRECTION_LABEL[c.direction as keyof typeof CALL_DIRECTION_LABEL]} · {CALL_OUTCOME_LABEL[c.outcome as CallOutcome]}{c.follow_up_id ? <> · <Link className="text-primary hover:underline" href={`/followup/${c.follow_up_id}`}>follow-up</Link></> : null}</span>
+                    <span className="shrink-0 text-xs text-muted">{fmtDateTime(c.called_at as string)}{c.user_id ? ` · ${names.get(c.user_id as string) ?? ""}` : ""}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+          <Card>
+            <h2 className="mb-3 font-medium">Follow-up</h2>
+            {(fus ?? []).length === 0 && (quotes ?? []).length === 0 ? <p className="text-sm text-muted">Nessun follow-up.</p> : (
+              <ul className="space-y-2 text-sm" data-testid="customer-followups">
+                {[...openFus, ...closedFus].map((f) => (
+                  <li key={f.id as string} className="flex items-center justify-between gap-2">
+                    <Link className="min-w-0 truncate hover:underline" href={`/followup/${f.id}`}>{f.title as string}</Link>
+                    <span className="flex shrink-0 items-center gap-2 text-xs text-muted">{fmtDay(f.due_on as string)} <FollowUpBadge status={f.status as FollowUpStatus} overdue={isOverdue(f.status as FollowUpStatus, f.due_on as string, today)} /></span>
+                  </li>
+                ))}
+                {(quotes ?? []).map((q) => <li key={q.id as string} className="text-xs text-muted">Preventivo <Link className="text-primary hover:underline" href={`/preventivi/${q.id}`}>{q.number as string}</Link>: follow-up il {fmtDay(q.follow_up_date as string)}</li>)}
+              </ul>
+            )}
+          </Card>
+          <Card>
+            <h2 className="mb-3 font-medium">Attività e scadenze</h2>
+            {open.length === 0 && done.length === 0 ? <p className="text-sm text-muted">Nessuna attività collegata.</p> : (
+              <>
+                {open.length > 0 && <ul className="space-y-2 text-sm">{open.map((t) => <Row key={t.id as string} t={t} />)}</ul>}
+                {done.length > 0 && <><h3 className="mb-2 mt-4 text-sm font-medium">Completate</h3><ul className="space-y-2 text-sm">{done.slice(0, 15).map((t) => <Row key={t.id as string} t={t} />)}</ul></>}
+              </>
+            )}
+          </Card>
+        </div>
+        <Card data-testid="interaction-history">
+          <h2 className="mb-3 font-medium">Storico delle interazioni</h2>
+          {(history ?? []).length === 0 ? <p className="text-sm text-muted">Ancora nessuna interazione registrata.</p> : (
+            <ol className="space-y-2 text-sm">
+              {(history ?? []).map((e) => (
+                <li key={e.id as number} className="flex justify-between gap-3">
+                  <Link className="truncate hover:underline" href={eventHref(e as never, id) ?? `/clienti/${id}`}>{e.summary as string}</Link>
+                  <span className="shrink-0 text-xs text-muted">{fmtDateTime(e.created_at as string)}{e.actor_id ? ` · ${names.get(e.actor_id as string) ?? ""}` : ""}</span>
+                </li>
+              ))}
+            </ol>
           )}
-        </Card>
-        <Card>
-          <h2 className="mb-3 font-medium">Attività completate</h2>
-          {done.length === 0 ? <p className="text-sm text-muted">Nessuna attività completata.</p> : <ul className="space-y-2 text-sm">{done.map((t) => <Row key={t.id as string} t={t} />)}</ul>}
-          <p className="mt-5 text-xs text-muted">Appuntamenti e chiamate registrate non sono ancora disponibili: arriveranno con la fase dedicata (appuntamenti, chiamate e promemoria).</p>
         </Card>
       </div>
     );
@@ -373,7 +454,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
   /* ------------------------------------------------------------------ eliminazione definitiva (solo archiviati, titolare/amministratori) */
   async function DeletePanel() {
     const b = await getDeleteBlockers(db, id);
-    const blockers = b ? ([["preventivi", b.quotes], ["fatture registrate", b.invoices], ["documenti", b.documents], ["attività", b.tasks]] as [string, number][]).filter(([, n]) => n > 0) : [];
+    const blockers = b ? ([["preventivi", b.quotes], ["fatture registrate", b.invoices], ["documenti", b.documents], ["attività", b.tasks], ["appuntamenti", b.appointments], ["chiamate", b.calls], ["follow-up", b.follow_ups]] as [string, number][]).filter(([, n]) => n > 0) : [];
     const willRemove = b ? ([["referenti", b.contacts], ["note", b.notes]] as [string, number][]).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`) : [];
     return (
       <Card className="mt-8 border-danger/40" data-testid="delete-panel">

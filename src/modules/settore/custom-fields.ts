@@ -6,11 +6,11 @@ export const FIELD_TYPE_LABEL: Record<FieldType, string> = { text: "Testo", numb
 export const cfName = (key: string) => `cf_${key}`;
 
 /** Chiave tecnica dal nome mostrato ("Tipo di infisso" -> "tipo_di_infisso"), univoca rispetto a quelle già usate. */
-export function slugKey(label: string, taken: Iterable<string>): string {
+export function slugKey(label: string, taken: Iterable<string>, max = 34): string {
   const used = new Set(taken);
-  const base = (label.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").replace(/^[0-9]+/, "") || "campo").slice(0, 34);
+  const base = (label.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").replace(/^[0-9]+/, "") || "campo").slice(0, max);
   let key = base, n = 2;
-  while (used.has(key)) key = `${base.slice(0, 34 - String(n).length - 1)}_${n++}`;
+  while (used.has(key)) key = `${base.slice(0, max - String(n).length - 1)}_${n++}`;
   return key;
 }
 
