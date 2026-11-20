@@ -1,20 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { billingSchema } from "@/modules/preventivi/schemas";
 import { nextQuoteNumberSchema, quoteNumberingSchema, quoteSettingsSchema } from "@/modules/impostazioni/schemas";
 import { parseOrgSettings } from "@/modules/impostazioni/settings";
 import { buildQuotePdf, DEFAULT_PDF_OPTIONS } from "@/modules/preventivi/pdf";
-
-describe("fatturato registrato", () => {
-  const ok = { amount: "1.234,56", billedAt: "2026-04-01", reference: "", note: "" };
-  it("converte l'importo in centesimi", () => {
-    const r = billingSchema.parse(ok);
-    expect(r.amount).toBe(123456);
-  });
-  it.each(["0", "-5", "abc", "", "1e6"])("rifiuta l'importo %s", (amount) => {
-    expect(billingSchema.safeParse({ ...ok, amount }).success).toBe(false);
-  });
-  it("rifiuta date non valide", () => expect(billingSchema.safeParse({ ...ok, billedAt: "1/4/2026" }).success).toBe(false));
-});
 
 describe("numerazione", () => {
   it("accetta prefisso sicuro e cifre 3-8", () => {

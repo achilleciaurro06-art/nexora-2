@@ -184,7 +184,7 @@ test("attività assegnata al collaboratore: notifica interna", async ({ page, br
   await ctx.close();
 });
 
-test("rimozione di un cliente dalla lista: preventivi aperti rimossi, accettati conservati", async ({ page }) => {
+test("archiviazione di un cliente dalla lista: tutto resta conservato", async ({ page }) => {
   // cliente con un preventivo ACCETTATO e uno in BOZZA
   await page.goto("/clienti/nuovo");
   await page.getByLabel("Ragione sociale / Nome *").fill("Verdi Infissi S.n.c.");
@@ -208,14 +208,13 @@ test("rimozione di un cliente dalla lista: preventivi aperti rimossi, accettati 
   const row = page.getByRole("row").filter({ hasText: "Verdi Infissi" });
   let message = "";
   page.once("dialog", async (d) => { message = d.message(); await d.accept(); });
-  await row.getByRole("button", { name: "Elimina" }).click();
+  await row.getByRole("button", { name: "Archivia" }).click();
   await expect(page.getByRole("row").filter({ hasText: "Verdi Infissi" })).toHaveCount(0);
-  expect(message).toContain("1 preventivo aperto");
-  expect(message).toContain("1 preventivo accettato/chiuso resta");
+  expect(message).toContain("restano conservati");
 
   await page.goto("/preventivi");
-  await expect(page.getByText("Preventivo in bozza")).toHaveCount(0);
-  await expect(page.getByText("Verdi Infissi S.n.c. (cliente rimosso)")).toBeVisible();
+  await expect(page.getByText("Preventivo in bozza")).toBeVisible(); // nulla viene rimosso
+  await expect(page.getByText("Verdi Infissi S.n.c. (cliente archiviato)").first()).toBeVisible();
 });
 
 test("rimozione di un preventivo dalla lista", async ({ page }) => {

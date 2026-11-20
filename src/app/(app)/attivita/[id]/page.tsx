@@ -4,7 +4,7 @@ import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
 import { can } from "@/server/auth/permissions";
 import { isUuid } from "@/lib/ids";
-import { listCustomers } from "@/modules/clienti/repository";
+import { listCustomerOptions } from "@/modules/clienti/repository";
 import { listMembers, nameMap } from "@/modules/organizzazioni/queries";
 import { deleteTaskAction, setTaskStatusAction, updateTaskAction } from "@/modules/attivita/actions";
 import { TaskEditor } from "@/modules/attivita/ui/task-editor";
@@ -26,7 +26,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   if (!task) notFound();
 
   const [customers, members, { data: quotes }, { data: events }] = await Promise.all([
-    listCustomers(db, orgId),
+    listCustomerOptions(db, orgId, task.customer_id as string | null),
     listMembers(db, orgId),
     db.from("quotes").select("id, number, title, customer_id").eq("organization_id", orgId).is("deleted_at", null).order("created_at", { ascending: false }).limit(300),
     db.from("activity_events").select("id, summary, created_at, actor_id").eq("organization_id", orgId).eq("entity", "task").eq("entity_id", id).order("created_at", { ascending: false }).limit(20),

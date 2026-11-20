@@ -20,7 +20,7 @@ export async function TimelineSection({ orgId, customerId, filter, names }: { or
       <h2 className="mb-3 font-medium">Storico delle interazioni</h2>
       <nav className="mb-4 flex flex-wrap gap-2" aria-label="Filtro timeline">
         {TIMELINE_FILTERS.map((x) => (
-          <Link key={x.key} scroll={false} href={`/clienti/${customerId}?tl=${x.key}#timeline`} aria-current={x.key === f.key ? "true" : undefined}
+          <Link key={x.key} scroll={false} href={`/clienti/${customerId}?tab=documenti&tl=${x.key}#timeline`} aria-current={x.key === f.key ? "true" : undefined}
             className={buttonVariants({ variant: x.key === f.key ? "default" : "outline", size: "sm" })}>{x.label}</Link>
         ))}
       </nav>

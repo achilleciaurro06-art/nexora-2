@@ -27,13 +27,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const in7d = isoDayOffset(7);
 
   const [customers, quotes, openTasks, reminders, followUpsCount, followUpList, customerDates, doneTasks, recontact, events, billings] = await Promise.all([
-    db.from("customers").select("id", { count: "exact", head: true }).eq("organization_id", orgId).is("deleted_at", null),
+    db.from("customers").select("id", { count: "exact", head: true }).eq("organization_id", orgId).is("deleted_at", null).is("archived_at", null),
     db.from("quotes").select("status, total_cents, issue_date").eq("organization_id", orgId).is("deleted_at", null).limit(5000),
     db.from("tasks").select("id, title, due_at, priority").eq("organization_id", orgId).is("deleted_at", null).in("status", ["todo", "in_progress"]).order("due_at", { nullsFirst: false }).limit(200),
     db.from("reminders").select("id, remind_at, tasks(title)").eq("organization_id", orgId).eq("status", "pending").lte("remind_at", in7).order("remind_at").limit(5),
     db.from("quotes").select("id", { count: "exact", head: true }).eq("organization_id", orgId).is("deleted_at", null).in("status", ["draft", "sent"]).not("follow_up_date", "is", null).lte("follow_up_date", in7d),
     db.from("quotes").select("id, number, follow_up_date, customers(name)").eq("organization_id", orgId).is("deleted_at", null).in("status", ["draft", "sent"]).not("follow_up_date", "is", null).lte("follow_up_date", in7d).order("follow_up_date").limit(5),
-    db.from("customers").select("created_at").eq("organization_id", orgId).is("deleted_at", null).gte("created_at", startIso).limit(5000),
+    db.from("customers").select("created_at").eq("organization_id", orgId).is("deleted_at", null).is("archived_at", null).gte("created_at", startIso).limit(5000),
     db.from("tasks").select("id", { count: "exact", head: true }).eq("organization_id", orgId).is("deleted_at", null).eq("status", "done").gte("completed_at", startIso),
     db.rpc("customers_to_recontact", { p_org: orgId, p_days: 60, p_limit: 5 }),
     db.from("activity_events").select("id, summary, created_at, entity, entity_id, customer_id").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(8),

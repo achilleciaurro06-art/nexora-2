@@ -5,7 +5,7 @@ import { createClient } from "@/server/supabase/server";
 import { can } from "@/server/auth/permissions";
 import { isUuid } from "@/lib/ids";
 import { ANALYZABLE_MIMES, documentLabel } from "@/lib/documents";
-import { listCustomers } from "@/modules/clienti/repository";
+import { listCustomerOptions } from "@/modules/clienti/repository";
 import { updateDocumentMetadataAction } from "@/modules/documenti/actions";
 import { MetadataForm } from "@/modules/documenti/ui/metadata-form";
 import { AnalyzeForm } from "@/modules/documenti/ui/analyze-form";
@@ -26,7 +26,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
     .eq("organization_id", orgId).eq("id", id).is("deleted_at", null).maybeSingle();
   if (!doc) notFound();
   const [customers, { data: sugs }] = await Promise.all([
-    listCustomers(db, orgId),
+    listCustomerOptions(db, orgId, doc.customer_id as string | null),
     db.from("ai_suggestions").select("id, status, created_at").eq("organization_id", orgId).eq("kind", "quote_draft").eq("source_id", id).order("created_at", { ascending: false }).limit(10),
   ]);
   const mime = doc.mime_type as string;

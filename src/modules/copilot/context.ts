@@ -18,7 +18,7 @@ async function base({ db, orgId, userId, userName }: Ctx) {
     db.from("organizations").select("name, vat_number").eq("id", orgId).maybeSingle(),
     db.from("quotes").select("status, total_cents").eq("organization_id", orgId).is("deleted_at", null).limit(3000),
     db.from("tasks").select("due_at").eq("organization_id", orgId).is("deleted_at", null).in("status", ["todo", "in_progress"]).limit(1000),
-    db.from("customers").select("id", { count: "exact", head: true }).eq("organization_id", orgId).is("deleted_at", null),
+    db.from("customers").select("id", { count: "exact", head: true }).eq("organization_id", orgId).is("deleted_at", null).is("archived_at", null),
   ]);
   const by: Record<string, { n: number; eur: number }> = {};
   for (const q of quotes ?? []) { const s = q.status as string; by[s] ??= { n: 0, eur: 0 }; by[s].n++; by[s].eur += eur(q.total_cents); }
@@ -149,7 +149,7 @@ const packs: Record<PackName, (c: Ctx) => Promise<unknown>> = {
 async function customerProfile(c: Ctx, id: string, name: string) {
   const { db, orgId } = c;
   const [{ data: cust }, { data: contacts }, { data: quotes }, { data: tasks }, { data: notes }, { data: docs }, { data: events }] = await Promise.all([
-    db.from("customers").select("status, email, phone, city, vat_number, notes, created_at").eq("organization_id", orgId).eq("id", id).maybeSingle(),
+    db.from("customers").select("status, email, phone, city, vat_number, notes, created_at, archived_at").eq("organization_id", orgId).eq("id", id).maybeSingle(),
     db.from("customer_contacts").select("full_name, job_title, email, phone, notes").eq("organization_id", orgId).eq("customer_id", id).limit(5),
     db.from("quotes").select("number, title, status, total_cents, issue_date, follow_up_date, quote_items(description, quantity, unit_price_cents)").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).order("issue_date", { ascending: false }).limit(8),
     db.from("tasks").select("title, status, due_at, priority").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).order("due_at", { nullsFirst: false }).limit(8),
@@ -157,8 +157,20 @@ async function customerProfile(c: Ctx, id: string, name: string) {
     db.from("documents").select("name, mime_type").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).limit(5),
     db.from("activity_events").select("summary, created_at").eq("organization_id", orgId).eq("customer_id", id).order("created_at", { ascending: false }).limit(10),
   ]);
+  const { data: summary } = await db.rpc("customer_commercial_summary", { p_customer: id });
+  const sm = (summary ?? null) as Record<string, number | string | null> | null;
+  const valore = sm ? {
+    nota: "accettato, fatturato e incassato sono misure diverse; i valori sono calcolati dal database",
+    preventivi_emessi: { n: sm.issued_count, valore_eur: eur(sm.issued_cents as number) },
+    accettati: { n: sm.accepted_count, valore_eur: eur(sm.accepted_cents as number) },
+    rifiutati: { n: sm.rejected_count, valore_eur: eur(sm.rejected_cents as number) },
+    trattative_aperte_inviati: { n: sm.open_count, valore_eur: eur(sm.open_cents as number) },
+    valore_medio_eur: eur(sm.avg_issued_cents as number), conversione_pct: sm.conversion_pct,
+    fatturato_registrato_eur: eur(sm.invoiced_cents as number), incassato_eur: eur(sm.collected_cents as number),
+    ultima_attivita: day(sm.last_activity_at as string | null), ultimo_contatto: day(sm.last_contact_at as string | null),
+  } : undefined;
   return {
-    cliente: name, stato: cust?.status, email: cust?.email, telefono: cust?.phone, citta: cust?.city, partita_iva: cust?.vat_number, note_anagrafica: String(cust?.notes ?? "").slice(0, 300),
+    cliente: name, archiviato: cust?.archived_at ? "sì" : undefined, valore_commerciale: valore, stato: cust?.status, email: cust?.email, telefono: cust?.phone, citta: cust?.city, partita_iva: cust?.vat_number, note_anagrafica: String(cust?.notes ?? "").slice(0, 300),
     referenti: (contacts ?? []).map((r) => ({ nome: r.full_name, ruolo: r.job_title, email: r.email, telefono: r.phone, note: String(r.notes ?? "").slice(0, 120) })),
     preventivi: (quotes ?? []).map((q) => ({
       numero: q.number, oggetto: q.title, stato: q.status, importo_eur: eur(q.total_cents), emesso_il: q.issue_date, follow_up: q.follow_up_date,

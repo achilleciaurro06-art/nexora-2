@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
 import { can } from "@/server/auth/permissions";
-import { listCustomers } from "@/modules/clienti/repository";
+import { listCustomerOptions } from "@/modules/clienti/repository";
 import { getQuote } from "@/modules/preventivi/repository";
 import { PageHeader } from "@/components/ui/card";
 import { QuoteForm } from "@/modules/preventivi/ui/quote-form";
@@ -20,7 +20,7 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
   const found = await getQuote(db, ctx.org.organizationId, id);
   if (!found) notFound();
   if (found.quote.status !== "draft") redirect(`/preventivi/${id}`);
-  const [customers, catalog] = await Promise.all([listCustomers(db, ctx.org.organizationId), loadQuoteCatalog(db, ctx.org.organizationId)]);
+  const [customers, catalog] = await Promise.all([listCustomerOptions(db, ctx.org.organizationId, found.quote.customer_id), loadQuoteCatalog(db, ctx.org.organizationId)]);
   const { data: org } = await db.from("organizations").select("settings").eq("id", ctx.org.organizationId).maybeSingle();
   const { quote, items } = found;
   return (

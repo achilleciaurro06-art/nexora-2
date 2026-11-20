@@ -35,7 +35,7 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
 
   const documentId = payload.document_id ?? (sug.source_id as string | null);
   const [{ data: customers }, { data: doc }] = await Promise.all([
-    db.from("customers").select("id, name, vat_number").eq("organization_id", orgId).is("deleted_at", null).order("name").limit(500),
+    db.from("customers").select("id, name, vat_number").eq("organization_id", orgId).is("deleted_at", null).is("archived_at", null).order("name").limit(500),
     documentId ? db.from("documents").select("id, name").eq("organization_id", orgId).eq("id", documentId).maybeSingle() : Promise.resolve({ data: null }),
   ]);
   const list = (customers ?? []) as { id: string; name: string; vat_number: string | null }[];

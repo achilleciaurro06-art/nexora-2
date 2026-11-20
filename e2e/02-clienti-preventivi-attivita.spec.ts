@@ -24,7 +24,7 @@ test("creazione di un cliente", async ({ page }) => {
 });
 
 test("referenti: aggiunta, modifica, note e timeline filtrabile", async ({ page }) => {
-  await page.goto(customerUrl);
+  await page.goto(`${customerUrl}?tab=referenti`);
   const add = form(page, "Aggiungi referente");
   await add.getByLabel("Nuovo referente").fill("Mario Rossi");
   await add.getByLabel("Ruolo").fill("Titolare");
@@ -38,6 +38,7 @@ test("referenti: aggiunta, modifica, note e timeline filtrabile", async ({ page 
   await edit.getByRole("button", { name: "Salva" }).click();
   await expect(page.getByText(/333 9876543/)).toBeVisible();
 
+  await page.goto(`${customerUrl}?tab=documenti`);
   const note = form(page, "Aggiungi nota");
   await note.getByLabel("Nuova nota").fill("Chiamato oggi: interessato a 3 serramenti.");
   await note.getByRole("button", { name: "Aggiungi nota" }).click();
@@ -113,7 +114,7 @@ test("attività collegata al preventivo, completamento e riapertura", async ({ p
   await expect(page.getByRole("heading", { name: /Imminenti/ })).toBeVisible();
   await expect(page.getByRole("link", { name: `Follow-up preventivo ${quoteNumber}`, exact: true })).toBeVisible();
 
-  await page.goto(customerUrl);
+  await page.goto(`${customerUrl}?tab=attivita`);
   await expect(page.getByRole("link", { name: `Follow-up preventivo ${quoteNumber}`, exact: true })).toBeVisible(); // attività visibile nella scheda cliente
 });
 

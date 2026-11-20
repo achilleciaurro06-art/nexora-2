@@ -103,3 +103,27 @@ Superati: 74 test unitari (11 file), 98 controlli SQL su RLS/ruoli/isolamento/no
 - I campi personalizzati non compaiono (ancora) nel PDF, nelle ricerche né nei filtri; i valori dei preventivi si salvano con una seconda scrittura dopo il salvataggio (se fallisce, il preventivo c'è e il messaggio lo dice).
 - Il catalogo non ha import da Excel/CSV né storico dei prezzi; la scelta del prodotto nel preventivo ricopia i dati (non resta un legame con il prodotto: cambiare il catalogo non modifica i preventivi esistenti — voluto).
 - Il confronto prezzi AI (Fase precedente) non usa ancora il catalogo.
+
+---
+
+## Aggiornamento – Fase 4: CRM completo e valore commerciale (branch `feature/completamento-funzionale-v2`, NON in produzione)
+
+**Fatto e verificato (DB, unit, E2E in browser):**
+- **Archiviazione e ripristino** (distinti dall'eliminazione): dalla scheda e dalla lista; elenco «Attivi» / «Archiviati (n)» con ricerca (nome, P.IVA, email, città) e filtri per stato e tipologia; data e autore impostati dal database (non falsificabili); tutto resta collegato (preventivi, referenti, documenti, attività, storico). Gli archiviati sono esclusi da elenchi attivi, selettori (preventivi, attività, documenti, revisione documenti), conteggi e «nuovi clienti» della dashboard, «clienti da ricontattare», abbinamento clienti nell'analisi documenti e proposte del Copilot; il database vieta nuovi preventivi su clienti archiviati (anche duplicando). Le schede dei record già collegati (modifica preventivo/attività/documento) mostrano comunque il cliente archiviato.
+- **Eliminazione definitiva controllata** (`delete_customer_permanently`): solo titolare/amministratori, solo su clienti già archiviati, conferma scritta «ELIMINA»; **negata** se esistono preventivi (anche rimossi), fatture registrate, documenti o attività, con spiegazione dei numeri. Se consentita, elimina con il cliente solo referenti, note e cronologia; l'audit conserva l'operazione. Nessun audit disattivato, nessuna cascata indiscriminata.
+- **Scheda cliente a sezioni** (Panoramica, Referenti, Preventivi, Attività, Documenti e comunicazioni, Fatturazione) con 4 indicatori sempre visibili (accettato, in trattativa, fatturato/incassato, ultima attività/ultimo contatto). Anagrafica estesa: tipologia, settore di attività, sito web, data di creazione, campi personalizzati e listino (Fase 3, compatibili e conservati).
+- **Valore commerciale**: una sola funzione SQL (`customer_commercial_summary`) alimenta scheda e Copilot: emessi (non bozze), accettati, rifiutati, scaduti, aperti (inviati), bozze, valore medio, conversione (accettati su decisi), ultima attività, ultimo contatto. **Accettato ≠ fatturato ≠ incassato** in ogni schermata.
+- **Fatture registrate**: estesa la tabella `quote_billings` della Fase 2 (nessuna duplicazione): numero, data, imponibile, IVA, totale (calcolati dal server), collegamento facoltativo al preventivo accettato, stato e data di incasso, note; incasso/annullamento, rimozione (titolare/amministratori), eventi in cronologia. Dalla scheda cliente e dalla scheda preventivo. **Non è fatturazione elettronica**: sono registrazioni di dati; NEXORA non genera né invia documenti fiscali.
+
+**Migrazione:** `20261119000019_crm_complete.sql` (additiva; sostituisce `activity_trigger`, `quote_billings_guard`, `customers_to_recontact`). Dopo la 018, non applicata in produzione. Nuove funzioni: `customer_commercial_summary`, `customer_delete_blockers`, `delete_customer_permanently`.
+
+**Sostituzione di funzioni già presenti:** il pulsante «Rimuovi cliente» (RPC `remove_customer`, che rimuoveva anche i preventivi aperti) è stato sostituito da archiviazione + eliminazione definitiva controllata; la RPC resta nel database ma non è più usata dall'interfaccia.
+
+**Test:** 241 controlli SQL (+46 in `60_crm.sql`), 122 unit (+11), 64 E2E (+11), tsc/eslint/build puliti. Il test SQL ha fatto correggere un ordine di cancellazione (gli eventi generati dalla cascata dei referenti).
+
+**Limiti noti:**
+- **Appuntamenti, chiamate registrate ed email** non esistono ancora (Fasi 5 e 6): la scheda lo dichiara; documenti, note e cronologia sono integrati.
+- «Ultimo contatto» = ultima nota, attività chiusa o preventivo inviato/deciso (finché non ci saranno chiamate/email).
+- Le fatture non si modificano (si rimuove e si reinserisce); nessuna nota di credito, scadenze di pagamento o solleciti; incasso solo totale (niente pagamenti parziali).
+- I preventivi di un cliente archiviato restano visibili in elenchi, follow-up e statistiche dei preventivi (sono trattative reali), contrassegnati «(cliente archiviato)».
+- La dashboard usa ancora il proprio calcolo per periodo; la sua riscrittura su aggregazioni SQL è prevista in Fase 9.

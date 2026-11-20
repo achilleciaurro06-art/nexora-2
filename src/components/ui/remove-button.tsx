@@ -8,7 +8,7 @@ type Action = (prev: ActionResult | null, formData: FormData) => Promise<ActionR
 
 /** Pulsante di rimozione con conferma esplicita; mostra l'eventuale errore restituito dal server. */
 export function RemoveButton({ action, confirmMessage, label = "Elimina", variant = "ghost", size = "sm" }: {
-  action: Action; confirmMessage: string; label?: string; variant?: "ghost" | "danger" | "outline"; size?: "sm" | "default";
+  action: Action; confirmMessage: string; label?: string; variant?: "default" | "ghost" | "danger" | "outline"; size?: "sm" | "default";
 }) {
   const [state, formAction, pending] = useActionState(action, null);
   return (

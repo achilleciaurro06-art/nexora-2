@@ -7,7 +7,7 @@ import { requirePermission } from "@/server/auth/session";
 import { fail, type ActionResult } from "@/lib/result";
 import { fieldErrors } from "@/lib/forms";
 import { isUuid } from "@/lib/ids";
-import { billingSchema, quoteSchema, quoteStatusSchema } from "./schemas";
+import { quoteSchema, quoteStatusSchema } from "./schemas";
 import { saveQuote, setQuoteStatus, softDeleteQuote } from "./repository";
 import { listFieldDefs } from "@/modules/settore/queries";
 import { parseCustomValues } from "@/modules/settore/custom-fields";
@@ -61,36 +61,9 @@ export async function duplicateQuoteAction(id: string) {
   await requirePermission("data:write");
   if (!isUuid(id)) return;
   const { data, error } = await (await createClient()).rpc("duplicate_quote", { p_quote: id });
-  if (error || !data) redirect(`/preventivi/${id}?errore=duplicazione`);
+  if (error || !data) redirect(`/preventivi/${id}?errore=${error?.code === "23514" ? "cliente-archiviato" : "duplicazione"}`);
   revalidatePath("/preventivi");
   redirect(`/preventivi/${data as string}/modifica`);
-}
-
-/** Registra un importo realmente fatturato su un preventivo accettato (distinto dal valore del preventivo). */
-export async function addBillingAction(quoteId: string, _prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
-  const ctx = await requirePermission("data:write");
-  if (!isUuid(quoteId)) return fail("Preventivo non valido");
-  const parsed = billingSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Controlla i campi", fieldErrors(parsed.error));
-  const db = await createClient();
-  const { data: quote } = await db.from("quotes").select("customer_id").eq("organization_id", ctx.org.organizationId).eq("id", quoteId).is("deleted_at", null).maybeSingle();
-  if (!quote) return fail("Preventivo non trovato");
-  const { error } = await db.from("quote_billings").insert({
-    organization_id: ctx.org.organizationId, quote_id: quoteId, customer_id: quote.customer_id, amount_cents: parsed.data.amount,
-    billed_at: parsed.data.billedAt, reference: parsed.data.reference, note: parsed.data.note, created_by: ctx.userId,
-  });
-  if (error) return fail(error.code === "23514" ? "Si può registrare fatturato solo su un preventivo accettato" : "Impossibile registrare il fatturato");
-  revalidatePath(`/preventivi/${quoteId}`); revalidatePath("/dashboard"); revalidatePath(`/clienti/${quote.customer_id as string}`);
-  return { ok: true };
-}
-
-export async function removeBillingAction(quoteId: string, billingId: string, _prev: ActionResult | null, _formData: FormData): Promise<ActionResult> {
-  const ctx = await requirePermission("data:delete");
-  if (!isUuid(quoteId) || !isUuid(billingId)) return fail("Registrazione non valida");
-  const { error } = await (await createClient()).from("quote_billings").delete().eq("organization_id", ctx.org.organizationId).eq("id", billingId).eq("quote_id", quoteId);
-  if (error) return fail("Impossibile rimuovere la registrazione");
-  revalidatePath(`/preventivi/${quoteId}`); revalidatePath("/dashboard");
-  return { ok: true };
 }
 
 /** Rimuove (archivia) il preventivo: sparisce da liste, follow-up e statistiche; resta recuperabile dall'assistenza. */

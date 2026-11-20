@@ -9,7 +9,7 @@ const iso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const today = () => new Date().toISOString().slice(0, 10);
 
 async function customerByName(db: SupabaseClient, orgId: string, name: string | undefined) {
-  const { data } = await db.from("customers").select("id, name").eq("organization_id", orgId).is("deleted_at", null).limit(500);
+  const { data } = await db.from("customers").select("id, name").eq("organization_id", orgId).is("deleted_at", null).is("archived_at", null).limit(500);
   return resolveByName((data ?? []) as { id: string; name: string }[], name);
 }
 async function quoteByNumber(db: SupabaseClient, orgId: string, number: string | undefined) {

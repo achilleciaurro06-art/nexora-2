@@ -42,7 +42,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
             return (
               <tr key={q.id}>
                 <td><Link className="font-medium text-primary hover:underline" href={`/preventivi/${q.id}`}>{q.number}</Link></td>
-                <td>{c ? (c.deleted_at ? <span className="text-muted">{c.name} (cliente rimosso)</span> : c.name) : "—"}</td><td>{q.title ?? "—"}</td>
+                <td>{c ? (c.deleted_at ? <span className="text-muted">{c.name} (cliente rimosso)</span> : c.archived_at ? <span className="text-muted">{c.name} (cliente archiviato)</span> : c.name) : "—"}</td><td>{q.title ?? "—"}</td>
                 <td>{new Date(q.issue_date).toLocaleDateString("it-IT")}</td>
                 <td><StatusBadge status={q.status} /></td>
                 <td className="text-right">{formatEur(q.total_cents)}</td>

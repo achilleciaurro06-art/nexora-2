@@ -10,6 +10,13 @@ let numberBefore = "";
 let draftUrl = "";
 
 test("badge di stato colorato in lista e nella scheda", async ({ page }) => {
+  // garantisce un preventivo di un cliente attivo (le prove precedenti possono averli rimossi o archiviati)
+  const o = sql("select id from public.organizations where name = 'Azienda Prova S.r.l.'");
+  const c = sql(`select id from public.customers where name = 'Rossi Costruzioni S.r.l.'`);
+  if (sql(`select count(*) from public.quotes where customer_id = '${c}' and deleted_at is null`) === "0") {
+    const q = sql(`insert into public.quotes (organization_id, customer_id, title) values ('${o}', '${c}', 'Preventivo di prova') returning id`).split("\n")[0];
+    sql(`insert into public.quote_items (organization_id, quote_id, description, quantity, unit_price_cents, vat_rate) values ('${o}', '${q}', 'Voce di prova', 1, 100000, 22)`);
+  }
   await page.goto("/preventivi");
   const badge = page.locator("[data-status]").first();
   await expect(badge).toBeVisible();
@@ -17,7 +24,7 @@ test("badge di stato colorato in lista e nella scheda", async ({ page }) => {
   expect(status).toBeTruthy();
   const bg = await badge.evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(bg).not.toBe("rgba(0, 0, 0, 0)");
-  await page.getByRole("link", { name: /^\d{4}\/\d{4}$/ }).first().click();
+  await page.getByRole("row").filter({ hasText: "Rossi Costruzioni" }).getByRole("link", { name: /^\d{4}\/\d{4}$/ }).first().click();
   await page.waitForURL(/\/preventivi\/[0-9a-f-]{36}$/);
   quoteUrl = page.url();
   numberBefore = /Preventivo (\S+)/.exec((await page.getByRole("heading", { level: 1 }).textContent()) ?? "")?.[1] ?? "";
@@ -88,13 +95,14 @@ test("fatturato registrato: solo su preventivi accettati, distinto dal valore, c
   const card = page.getByTestId("billing-card");
   await expect(card).toBeVisible();
   await expect(card.getByTestId("billed-total")).toHaveText(/0,00/);
-  await card.getByLabel(/Importo fatturato/).fill("0");
-  await card.getByRole("button", { name: "Registra fatturato" }).click();
-  await expect(card.getByText("Importo non valido")).toBeVisible();
-  await card.getByLabel(/Importo fatturato/).fill("300,50");
-  await card.getByLabel(/Riferimento/).fill("FT-2026-9");
-  await card.getByRole("button", { name: "Registra fatturato" }).click();
-  await expect(card.getByTestId("billed-total")).toHaveText(/300,50/);
+  await card.getByLabel(/Numero fattura/).fill("FT-2026-9");
+  await card.getByLabel(/Imponibile/).fill("0");
+  await card.getByRole("button", { name: "Registra fattura" }).click();
+  await expect(card.getByText("Imponibile non valido")).toBeVisible();
+  await card.getByLabel(/Imponibile/).fill("300,50");
+  await expect(card.getByTestId("invoice-preview")).toContainText("366,61"); // 300,50 + IVA 22%
+  await card.getByRole("button", { name: "Registra fattura" }).click();
+  await expect(card.getByTestId("billed-total")).toHaveText(/366,61/);
   await expect(card.getByText(/FT-2026-9/)).toBeVisible();
   await page.goto("/dashboard?range=all");
   await expect(page.getByText("Fatturato registrato", { exact: true })).toBeVisible();

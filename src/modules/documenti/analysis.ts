@@ -33,7 +33,7 @@ async function findDuplicates(db: SupabaseClient, orgId: string, documentId: str
     const { data } = await db.from("documents").select("id, name").eq("organization_id", orgId).eq("content_hash", contentHash).neq("id", documentId).is("deleted_at", null).limit(3);
     for (const d of data ?? []) out.push({ type: "document", id: d.id as string, label: `Stesso file già in archivio: ${d.name as string}` });
   }
-  const { data: customers } = await db.from("customers").select("id, name, vat_number").eq("organization_id", orgId).is("deleted_at", null).limit(500);
+  const { data: customers } = await db.from("customers").select("id, name, vat_number").eq("organization_id", orgId).is("deleted_at", null).is("archived_at", null).limit(500);
   const match = matchCustomer((customers ?? []) as { id: string; name: string; vat_number: string | null }[], payload.data.client);
   const total = expectedTotalCents(payload.data);
   if (match && total !== null) {

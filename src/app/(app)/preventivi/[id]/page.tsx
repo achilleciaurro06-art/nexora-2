@@ -3,13 +3,14 @@ import { notFound } from "next/navigation";
 import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
 import { can } from "@/server/auth/permissions";
-import { getQuote, listBillings, listRevisions } from "@/modules/preventivi/repository";
-import { BillingForm } from "@/modules/preventivi/ui/billing-form";
+import { getQuote, listRevisions } from "@/modules/preventivi/repository";
+import { listInvoices } from "@/modules/fatture/queries";
+import { InvoiceActions, InvoiceForm } from "@/modules/fatture/ui/invoice-form";
 import { listMembers, nameMap } from "@/modules/organizzazioni/queries";
 import { listFieldDefs } from "@/modules/settore/queries";
 import { displayValue } from "@/modules/settore/custom-fields";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { changeQuoteStatusAction, deleteQuoteAction, duplicateQuoteAction, removeBillingAction } from "@/modules/preventivi/actions";
+import { changeQuoteStatusAction, deleteQuoteAction, duplicateQuoteAction } from "@/modules/preventivi/actions";
 import { Alert, Card, PageHeader, Table } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { RemoveButton } from "@/components/ui/remove-button";
@@ -31,12 +32,13 @@ export default async function QuotePage({ params, searchParams }: { params: Prom
   const db = await createClient();
   const found = await getQuote(db, ctx.org.organizationId, id);
   if (!found) notFound();
-  const [revisions, billings, fieldDefs] = await Promise.all([listRevisions(db, ctx.org.organizationId, id), listBillings(db, ctx.org.organizationId, id), listFieldDefs(db, ctx.org.organizationId, "quote")]);
+  const [revisions, billings, fieldDefs] = await Promise.all([listRevisions(db, ctx.org.organizationId, id), listInvoices(db, ctx.org.organizationId, { quoteId: id }), listFieldDefs(db, ctx.org.organizationId, "quote")]);
   const shownFields = fieldDefs.filter((d) => (d.active || quote_has(found.quote.custom_values, d.key)) && quote_has(found.quote.custom_values, d.key));
   const { quote, items } = found;
   const customer = quote.customers;
   const canWrite = can(ctx.org.role, "data:write");
   const billedCents = billings.reduce((t, b) => t + Number(b.amount_cents), 0);
+  const billedTaxable = billings.reduce((t, b) => t + Number(b.taxable_cents ?? b.amount_cents), 0);
   const authors = nameMap(await listMembers(db, ctx.org.organizationId));
   return (
     <>
@@ -44,13 +46,15 @@ export default async function QuotePage({ params, searchParams }: { params: Prom
         actions={
           <div className="no-print flex flex-wrap gap-2">
             <a href={`/preventivi/${id}/pdf`} download className={buttonVariants({ variant: "outline" })}>Scarica PDF</a>
-            {canWrite && <form action={duplicateQuoteAction.bind(null, id)} className="inline"><Button variant="outline">Duplica</Button></form>}
+            {canWrite && !customer?.archived_at && <form action={duplicateQuoteAction.bind(null, id)} className="inline"><Button variant="outline">Duplica</Button></form>}
             {canWrite && <Link href={`/attivita/nuova?preventivo=${id}`} className={buttonVariants({ variant: "outline" })}>Crea attività</Link>}
             {canWrite && quote.status === "draft" && <Link href={`/preventivi/${id}/modifica`} className={buttonVariants({ variant: "outline" })}>Modifica</Link>}
             {can(ctx.org.role, "data:delete") && <RemoveButton variant="danger" size="default" label="Rimuovi preventivo" action={deleteQuoteAction.bind(null, id)} confirmMessage={`Rimuovere il preventivo ${quote.number}?${quote.status === "accepted" ? "\n\nATTENZIONE: è un preventivo ACCETTATO." : ""}\n\nNon comparirà più in elenchi, follow-up e statistiche. L'operazione viene registrata.`} />}
           </div>
         } />
       {errore === "duplicazione" && <div className="mb-4"><Alert>Impossibile duplicare il preventivo.</Alert></div>}
+      {errore === "cliente-archiviato" && <div className="mb-4"><Alert>Il cliente è archiviato: ripristinalo prima di creare nuovi preventivi.</Alert></div>}
+      {customer?.archived_at && <div className="mb-4"><Alert>Il cliente di questo preventivo è archiviato.</Alert></div>}
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <Card>
           <dl className="mb-4 grid gap-2 text-sm sm:grid-cols-2">
@@ -97,7 +101,7 @@ export default async function QuotePage({ params, searchParams }: { params: Prom
         {quote.status === "accepted" && (
           <Card data-testid="billing-card">
             <h2 className="mb-1 font-medium">Fatturato registrato</h2>
-            <p className="mb-3 text-xs text-muted">Il valore del preventivo non è fatturato: qui si registra ciò che è stato davvero fatturato.</p>
+            <p className="mb-3 text-xs text-muted">Il valore del preventivo non è fatturato: qui si registrano le fatture realmente emesse (solo dati registrati, non documenti fiscali).</p>
             <dl className="mb-3 grid grid-cols-2 gap-1 text-sm">
               <dt className="text-muted">Valore preventivo</dt><dd className="text-right">{formatEur(quote.total_cents)}</dd>
               <dt className="text-muted">Fatturato</dt><dd className="text-right font-medium" data-testid="billed-total">{formatEur(billedCents)}</dd>
@@ -106,14 +110,17 @@ export default async function QuotePage({ params, searchParams }: { params: Prom
             {billings.length > 0 && (
               <ul className="mb-3 divide-y divide-border text-sm">
                 {billings.map((b) => (
-                  <li key={b.id} className="flex items-center justify-between gap-2 py-1.5">
-                    <span>{new Date(b.billed_at).toLocaleDateString("it-IT")} · {formatEur(b.amount_cents)}{b.reference ? ` · ${b.reference}` : ""}{b.note ? <span className="text-muted"> — {b.note}</span> : null}</span>
-                    {can(ctx.org.role, "data:delete") && <RemoveButton action={removeBillingAction.bind(null, id, b.id)} confirmMessage={`Rimuovere la registrazione di ${formatEur(b.amount_cents)}?`} />}
+                  <li key={b.id} className="space-y-1 py-2">
+                    <p>{b.reference ? <strong>{b.reference}</strong> : "Fattura"} · {new Date(b.billed_at).toLocaleDateString("it-IT")} · {formatEur(b.amount_cents)}
+                      {b.taxable_cents !== null ? <span className="text-muted"> (imponibile {formatEur(b.taxable_cents)} + IVA {formatEur(b.vat_cents ?? 0)})</span> : null}
+                      {b.note ? <span className="text-muted"> — {b.note}</span> : null}</p>
+                    <p className="text-xs text-muted">{b.payment_status === "paid" ? `Incassata il ${new Date(b.paid_at!).toLocaleDateString("it-IT")}` : "Da incassare"}</p>
+                    {canWrite && <InvoiceActions id={b.id} number={b.reference ?? "senza numero"} paid={b.payment_status === "paid"} canDelete={can(ctx.org.role, "data:delete")} today={new Date().toISOString().slice(0, 10)} />}
                   </li>
                 ))}
               </ul>
             )}
-            {canWrite && <BillingForm quoteId={id} today={new Date().toISOString().slice(0, 10)} suggestedAmount={quote.total_cents - billedCents > 0 ? ((quote.total_cents - billedCents) / 100).toFixed(2).replace(".", ",") : ""} />}
+            {canWrite && <InvoiceForm customerId={quote.customer_id} quoteId={id} today={new Date().toISOString().slice(0, 10)} suggestedTaxable={quote.subtotal_cents - billedTaxable > 0 ? ((quote.subtotal_cents - billedTaxable) / 100).toFixed(2).replace(".", ",") : ""} />}
           </Card>
         )}
         <Card data-testid="revisions-card">
