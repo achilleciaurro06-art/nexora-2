@@ -3,10 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Quote, QuoteItem, QuoteStatus } from "@/types/domain";
 import type { QuoteInput } from "./schemas";
 
-export type QuoteRow = Quote & { customers: { name: string } | { name: string }[] | null };
+export type QuoteRow = Quote & { customers: { name: string; deleted_at: string | null; archived_at?: string | null } | { name: string; deleted_at: string | null; archived_at?: string | null }[] | null };
 
 export async function listQuotes(db: SupabaseClient, orgId: string, status?: string): Promise<QuoteRow[]> {
-  let q = db.from("quotes").select("*, customers(name)").eq("organization_id", orgId).is("deleted_at", null)
+  let q = db.from("quotes").select("*, customers(name, deleted_at, archived_at)").eq("organization_id", orgId).is("deleted_at", null)
     .order("year", { ascending: false }).order("seq", { ascending: false }).limit(200);
   if (status) q = q.eq("status", status);
   const { data } = await q;
@@ -30,6 +30,14 @@ export async function saveQuote(db: SupabaseClient, orgId: string, quoteId: stri
       discount_percent: i.discountPercent, vat_rate: i.vatRate,
     })),
   });
+}
+
+export type Revision = { id: string; version: number; summary: string; created_at: string; created_by: string | null };
+
+export async function listRevisions(db: SupabaseClient, orgId: string, quoteId: string): Promise<Revision[]> {
+  const { data } = await db.from("quote_revisions").select("id, version, summary, created_at, created_by")
+    .eq("organization_id", orgId).eq("quote_id", quoteId).order("version", { ascending: false }).limit(50);
+  return (data ?? []) as Revision[];
 }
 
 export async function setQuoteStatus(db: SupabaseClient, orgId: string, id: string, status: QuoteStatus) {

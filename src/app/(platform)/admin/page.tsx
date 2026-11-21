@@ -11,7 +11,7 @@ export const metadata = { title: "Amministrazione piattaforma" };
 export default async function AdminPage() {
   const user = await requireContextOrUser();
   await assertPlatformAdmin(user.id);
-  const { codes, orgs } = await loadPlatformOverview();
+  const { codes, orgs, audit } = await loadPlatformOverview();
   return (
     <>
       <PageHeader title="Amministrazione piattaforma" description="Solo per amministratori NEXORA. Le azioni qui usano privilegi elevati." />
@@ -31,7 +31,7 @@ export default async function AdminPage() {
 
       <h2 className="mb-2 mt-8 font-medium">Aziende</h2>
       <Table>
-        <thead><tr><th>Nome</th><th>Creata il</th><th>Stato</th><th>Consumo AI (token/mese)</th><th /></tr></thead>
+        <thead><tr><th>Nome</th><th>Creata il</th><th>Stato</th><th>Crediti AI: consumo / limite mensile (token) · prezzi € per milione di token, facoltativi (solo per stimare il costo)</th><th /></tr></thead>
         <tbody>
           {orgs.length === 0 && <tr><td colSpan={5} className="text-muted">Nessuna azienda.</td></tr>}
           {orgs.map((o) => (
@@ -42,6 +42,8 @@ export default async function AdminPage() {
                 <form action={setAiQuotaAction.bind(null, o.id)} className="flex items-center gap-2">
                   <span className="whitespace-nowrap text-muted">{o.tokens_used.toLocaleString("it-IT")} /</span>
                   <Input name="limit" type="number" min={0} defaultValue={o.token_limit} aria-label={`Limite token ${o.name}`} className="w-32" />
+                  <Input name="input_price" type="number" min={0} step="0.0001" defaultValue={o.input_price === null ? "" : o.input_price / 1_000_000} placeholder="€/Mtok in" aria-label={`Prezzo input per milione di token ${o.name}`} className="w-24" />
+                  <Input name="output_price" type="number" min={0} step="0.0001" defaultValue={o.output_price === null ? "" : o.output_price / 1_000_000} placeholder="€/Mtok out" aria-label={`Prezzo output per milione di token ${o.name}`} className="w-24" />
                   <Button size="sm" variant="outline">Salva</Button>
                 </form>
               </td>
@@ -51,6 +53,23 @@ export default async function AdminPage() {
                   <Button size="sm" variant="outline">{o.status === "active" ? "Sospendi" : "Riattiva"}</Button>
                 </form>
               </td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+
+      <h2 className="mb-2 mt-8 font-medium">Registro delle operazioni di piattaforma</h2>
+      <p className="mb-2 text-xs text-muted">Ogni azione amministrativa è tracciata. La console non dà accesso ai dati commerciali delle aziende (clienti, preventivi, documenti).</p>
+      <Table>
+        <thead><tr><th>Quando</th><th>Operazione</th><th>Azienda</th><th>Dettagli</th></tr></thead>
+        <tbody>
+          {audit.length === 0 && <tr><td colSpan={4} className="text-muted">Nessuna operazione registrata.</td></tr>}
+          {audit.map((a) => (
+            <tr key={a.id}>
+              <td className="whitespace-nowrap text-muted">{new Date(a.created_at).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}</td>
+              <td>{a.action}</td>
+              <td>{orgs.find((o) => o.id === a.organization_id)?.name ?? "—"}</td>
+              <td className="text-muted">{Object.entries(a.details).map(([k, v]) => `${k}: ${String(v)}`).join(" · ") || "—"}</td>
             </tr>
           ))}
         </tbody>

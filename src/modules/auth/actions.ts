@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/server/supabase/server";
 import { createAdminClient } from "@/server/supabase/admin";
-import { ORG_COOKIE } from "@/server/auth/session";
+import { ORG_COOKIE, requireContext } from "@/server/auth/session";
 import { rateLimit } from "@/lib/rate-limit";
 import { fail, type ActionResult } from "@/lib/result";
 import { activationSchema, invitationAcceptSchema, loginSchema } from "./schemas";
@@ -36,6 +36,7 @@ export async function logoutAction() {
 }
 
 export async function switchOrganizationAction(formData: FormData) {
+  await requireContext();
   const orgId = String(formData.get("organizationId") ?? "");
   const supabase = await createClient();
   const { data } = await supabase.from("memberships").select("organization_id").eq("organization_id", orgId).maybeSingle();

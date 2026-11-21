@@ -10,7 +10,19 @@ const base: QuotePdfData = {
   items: [{ description: "Progettazione e sviluppo sito web", quantity: 1, unitPriceCents: 123400, discountPercent: 0, vatRate: 22, lineNetCents: 123400 }],
 };
 
+// PNG 2x2 valido (rosso), usato come logo di prova
+const PNG_2X2 = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGP8z8Dwn4EIwESMolGFDAwANBABAg6C0lUAAAAASUVORK5CYII="), (c) => c.charCodeAt(0));
+
 describe("quote PDF", () => {
+  it("includes the company profile, logo and footer without errors", async () => {
+    const withProfile: QuotePdfData = { ...base, organization: { ...base.organization, taxCode: "RSSMRA80A01L219X", address: "Via Roma 1, Torino", email: "info@alfa.it", phone: "011 123", website: "https://alfa.it", footer: "Note legali", legalAddress: "Via Legale 2, Milano", pec: "alfa@pec.it", bankName: "Banca Prova", iban: "IT60 X054 2811 1010 0000 0123 456", logo: { bytes: PNG_2X2, type: "png" } } };
+    const bytes = await buildQuotePdf(withProfile);
+    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(1);
+  });
+  it("falls back to name only when the logo is corrupt", async () => {
+    const bytes = await buildQuotePdf({ ...base, organization: { ...base.organization, logo: { bytes: new Uint8Array([1, 2, 3]), type: "png" } } });
+    expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
+  });
   it("generates a valid PDF with accents, euro sign and emoji (sanitised)", async () => {
     const bytes = await buildQuotePdf(base);
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");

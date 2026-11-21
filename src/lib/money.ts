@@ -2,7 +2,8 @@
 
 export function formatEur(cents: number | bigint | null | undefined): string {
   const n = Number(cents ?? 0) / 100;
-  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(n);
+  // useGrouping "always": il locale it-IT di default non raggruppa i numeri a 4 cifre ("1098,00"), generando incoerenza con "10.980,00"
+  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", useGrouping: "always" }).format(n);
 }
 
 /** "1.234,56" | "1234.56" | "12" -> 123456. Ritorna null se non valido. */

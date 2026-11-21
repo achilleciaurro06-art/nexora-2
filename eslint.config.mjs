@@ -5,6 +5,7 @@ const config = [
   ...coreWebVitals,
   ...typescript,
   { ignores: [".next/**", "node_modules/**", "next-env.d.ts"] },
+  { rules: { "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }] } },
   {
     // Il client service-role è consentito solo ai moduli che ne hanno bisogno.
     files: ["src/**/*.{ts,tsx}"],
@@ -14,6 +15,7 @@ const config = [
       "src/modules/amministrazione/**",
       "src/modules/organizzazioni/**",
       "src/server/ai/**",
+      "src/modules/email/**",
     ],
     rules: {
       "no-restricted-imports": ["error", { patterns: [{ group: ["**/supabase/admin"], message: "Il client service-role è vietato fuori dai moduli autorizzati." }] }],

@@ -49,7 +49,8 @@ export async function requireContext(): Promise<Context> {
   const user = await getUser();
   if (!user) redirect("/login");
   // Utente autenticato ma senza azienda: niente cicli di redirect.
-  redirect((await isPlatformAdmin(user.id).catch(() => false)) ? "/admin" : "/nessuna-azienda");
+  const admin = await isPlatformAdmin(user.id).catch((e) => { console.error("isPlatformAdmin fallito:", e instanceof Error ? e.message : e); return false; });
+  redirect(admin ? "/admin" : "/nessuna-azienda");
 }
 
 export async function requirePermission(permission: Permission): Promise<Context> {

@@ -12,6 +12,12 @@ export const customerSchema = z.object({
   province: optionalText(4),
   postal_code: optionalText(10),
   status: z.enum(["lead", "active", "inactive"]).default("active"),
+  price_list_id: z.union([z.literal(""), z.uuid()]).optional().transform((v) => (v ? v : null)),
   notes: optionalText(4000),
+  website: optionalText(200),
+  industry: optionalText(100),
+  customer_type: z.enum(["company", "private", "public", "other"]).default("company"),
 });
 export type CustomerInput = z.infer<typeof customerSchema>;
+
+export const DELETE_CONFIRM_WORD = "ELIMINA";

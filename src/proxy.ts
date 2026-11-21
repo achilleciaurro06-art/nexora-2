@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/attivazione", "/invito"];
+// /api/email/sync si autentica da sé con CRON_SECRET (chiamata da uno scheduler, senza sessione)
+const PUBLIC_PATHS = ["/login", "/attivazione", "/invito", "/api/email/sync"];
 
 /** Rinnova la sessione Supabase e protegge le aree autenticate. */
 export async function proxy(request: NextRequest) {

@@ -8,12 +8,12 @@ import { rateLimit } from "@/lib/rate-limit";
 import { fail, type ActionResult } from "@/lib/result";
 import { analyzeDocument } from "./analysis";
 
-export async function analyzeDocumentAction(documentId: string, _prev: ActionResult | null, _formData: FormData): Promise<ActionResult> {
+export async function analyzeDocumentAction(documentId: string, _prev: ActionResult<{ suggestionId: string }> | null, _formData: FormData): Promise<ActionResult<{ suggestionId: string }>> {
   const ctx = await requirePermission("ai:use");
   if (!can(ctx.org.role, "data:write")) return fail("Permesso negato");
   if (!rateLimit(`analyze:${ctx.userId}`, 10, 10 * 60_000)) return fail("Troppe analisi ravvicinate, attendi qualche minuto.");
   const res = await analyzeDocument({ db: await createClient(), orgId: ctx.org.organizationId, userId: ctx.userId, documentId });
   revalidatePath("/documenti");
   revalidatePath("/copilot");
-  return res.ok ? { ok: true } : fail(res.error);
+  return res.ok ? { ok: true, data: { suggestionId: res.suggestionId } } : fail(res.error);
 }

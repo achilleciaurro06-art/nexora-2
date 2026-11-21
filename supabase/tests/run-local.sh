@@ -10,3 +10,10 @@ $P -f tests/00_local_stub.sql
 for f in migrations/*.sql; do $P -f "$f" >/dev/null; done
 $P -f tests/10_tenant_isolation.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED" | sed "s/^psql:[^ ]* //"
 $P -f tests/20_save_quote.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED" | sed "s/^psql:[^ ]* //"
+$P -f tests/30_commercial.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"
+$P -f tests/40_quotes_complete.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"
+$P -f tests/50_sector.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"
+$P -f tests/60_crm.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"
+$P -f tests/70_agenda.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"
+$P -f tests/80_email.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"
+$P -f tests/90_ai_core.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"

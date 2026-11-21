@@ -1,15 +1,15 @@
 "use client";
 
-import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Alert } from "@/components/ui/card";
 import { inviteMemberAction } from "../actions";
+import { useFormAction } from "@/lib/use-form-action";
 
 export function InviteForm() {
-  const [state, action, pending] = useActionState(inviteMemberAction, null);
+  const { state, pending, onSubmit } = useFormAction(inviteMemberAction);
   return (
-    <form action={action} className="space-y-3">
+    <form onSubmit={onSubmit} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-[2fr_1fr_auto] sm:items-end">
         <div><Label htmlFor="email">Email da invitare</Label><Input id="email" name="email" type="email" required /></div>
         <div>
