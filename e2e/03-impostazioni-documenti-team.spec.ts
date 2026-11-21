@@ -272,5 +272,10 @@ test("console di piattaforma: quota AI e registro delle azioni; nessun dato comm
   await quota.locator("xpath=ancestor::form").getByRole("button", { name: "Salva", exact: true }).click();
   await expect(p.getByRole("cell", { name: "set_ai_quota" }).first()).toBeVisible();
   await expect(p.getByText("Rossi Costruzioni")).toHaveCount(0); // nessun dato commerciale delle aziende
+  // uscita dalla console: si torna al login e la sessione è chiusa (nessun rientro automatico in /admin)
+  await p.getByTestId("admin-logout").click();
+  await expect(p).toHaveURL(/\/login/);
+  await p.goto("/admin");
+  await expect(p).toHaveURL(/\/login/);
   await ctx.close();
 });
