@@ -1,8 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAiProvider, userMessageForAiError } from "@/server/ai";
-import { estimateTokens, recordUsage, reserveTokens } from "@/server/ai/usage";
+import { runAi } from "@/server/ai/run";
 import { addrsFromJson, formatAddrList } from "./addresses";
 
 export const analysisSchema = z.object({
@@ -53,12 +52,10 @@ export async function analyzeEmail(db: SupabaseClient, ctx: { userId: string; or
     blocks = [`[${m.direction === "inbound" ? "RICEVUTA" : "INVIATA"} ${String(m.message_at).slice(0, 10)}] Da: ${m.from_name ?? ""} <${m.from_address}> A: ${formatAddrList(addrsFromJson(m.to_addrs))}\nOggetto: ${m.subject}\n${String(m.body_text ?? "").slice(0, 6000)}`];
   }
   const content = `${scope === "thread" ? "Analizza l'intera conversazione (dalla più vecchia alla più recente)." : "Analizza questo messaggio."}\n<EMAIL_NON_ATTENDIBILE>\n${clean(blocks.join("\n\n---\n\n")).slice(0, 12_000)}\n</EMAIL_NON_ATTENDIBILE>`;
-  const estimate = estimateTokens(SYSTEM, content) + 900;
-  if (!(await reserveTokens(ctx.orgId, estimate))) return { ok: false, error: "Quota AI mensile esaurita per la tua organizzazione." };
+  const out = await runAi({ orgId: ctx.orgId, userId: ctx.userId, feature: "email_analysis", req: { system: SYSTEM, messages: [{ role: "user", content }], jsonSchema: JSON_SCHEMA, maxOutputTokens: 900 } });
+  if (!out.ok) return { ok: false, error: out.error };
   try {
-    const provider = getAiProvider();
-    const res = await provider.generate({ system: SYSTEM, messages: [{ role: "user", content }], jsonSchema: JSON_SCHEMA, maxOutputTokens: 900 });
-    await recordUsage(ctx.orgId, ctx.userId, "email_analysis", provider.name, res);
+    const res = out.res;
     let raw: unknown;
     try { raw = JSON.parse(res.text); } catch { return { ok: false, error: "L'AI non ha restituito un'analisi leggibile. Riprova." }; }
     const p = analysisSchema.safeParse(raw);
@@ -69,6 +66,6 @@ export async function analyzeEmail(db: SupabaseClient, ctx: { userId: string; or
       suggested_task: a.suggested_task ? { title: noTags(a.suggested_task.title) } : null } };
   } catch (e) {
     console.error("email analysis error", e instanceof Error ? e.message.slice(0, 200) : "unknown");
-    return { ok: false, error: userMessageForAiError(e) };
+    return { ok: false, error: "Impossibile completare l'analisi. Riprova." };
   }
 }

@@ -13,6 +13,11 @@ import { listMembers, nameMap } from "@/modules/organizzazioni/queries";
 import { RANGES, countByMonth, monthBuckets, parseRange, periodSummary, quotesByMonth, rangeStart } from "@/modules/dashboard/metrics";
 import { TrendChart } from "@/modules/dashboard/trend-chart";
 import { parseUserPrefs } from "@/modules/impostazioni/settings";
+import { can } from "@/server/auth/permissions";
+import { loadSnapshot } from "@/modules/insights/snapshot";
+import { buildSummary } from "@/modules/insights/rules";
+import { ensureInsights, listInsights, markSeen } from "@/modules/insights/service";
+import { AiSection } from "@/modules/insights/ui/ai-section";
 
 export const metadata = { title: "Dashboard" };
 
@@ -96,6 +101,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const mineToday = applyFilters(ab.today, { assignee: ctx.userId }).length;
   const recontactRows = (recontact.data ?? []) as { customer_id: string; name: string; last_activity: string; open_quotes: number }[];
 
+  // assistente AI: sintesi e segnalazioni su dati reali (regole, nessun costo AI); rigenerate al massimo ogni 30 minuti
+  const snapshot = await loadSnapshot(db, orgId, now).catch(() => null);
+  if (snapshot) await ensureInsights(db, orgId, now, undefined, snapshot).catch(() => undefined);
+  const insights = await listInsights(db, orgId).catch(() => []);
+  const seenBefore = new Set(insights.filter((i) => i.status !== "new").map((i) => i.id));
+  await markSeen(orgId, ctx.userId, insights).catch(() => undefined);
+
   return (
     <>
       <PageHeader title="Dashboard" description={`Panoramica di ${ctx.org.name}`} />
@@ -111,6 +123,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           return k.href ? <Link key={k.label} href={k.href}>{body}</Link> : <div key={k.label}>{body}</div>;
         })}
       </div>
+
+      {snapshot && <AiSection summary={buildSummary(snapshot)} insights={insights} seenBefore={seenBefore} canWrite={can(ctx.org.role, "data:write")} canUseAi={can(ctx.org.role, "ai:use")} />}
 
       <section aria-label="Il lavoro di oggi" className="mt-8" data-testid="today-work">
         <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Il lavoro di oggi</h2><Link className="text-sm text-primary hover:underline" href="/promemoria">Apri i promemoria</Link></div>

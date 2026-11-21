@@ -110,11 +110,13 @@ test("analisi AI di un Word senza chiave configurata: errore chiaro, nessun bloc
 });
 
 test("Copilot senza chiave: errore visibile, domanda ripristinata, interfaccia non bloccata", async ({ page }) => {
+  // lo stack di verifica usa il provider simulato: «@@nokey» riproduce lo stesso errore di autenticazione che il provider reale produce senza chiave
+  const q = "Quali preventivi sono in attesa? @@nokey";
   await page.goto("/copilot");
-  await page.getByLabel("Domanda").fill("Quali preventivi sono in attesa?");
+  await page.getByLabel("Domanda").fill(q);
   await page.getByRole("button", { name: "Invia" }).click();
   await expect(page.getByText(/non è configurato correttamente/)).toBeVisible();
-  await expect(page.getByLabel("Domanda")).toHaveValue("Quali preventivi sono in attesa?");
+  await expect(page.getByLabel("Domanda")).toHaveValue(q);
   await expect(page.getByRole("button", { name: "Invia" })).toBeEnabled();
 });
 

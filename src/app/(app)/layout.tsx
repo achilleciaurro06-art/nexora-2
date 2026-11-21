@@ -9,6 +9,8 @@ import { Select } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { getSector } from "@/modules/settore/queries";
 import { unreadCount } from "@/modules/email/queries";
+import { CopilotDock } from "@/modules/copilot/ui/dock";
+import { can } from "@/server/auth/permissions";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireContext();
@@ -49,6 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </form>
       </aside>
       <main className="min-w-0 p-4 md:p-8">{children}</main>
+      <CopilotDock canUse={can(ctx.org.role, "ai:use")} canConfirm={can(ctx.org.role, "data:write")} />
     </div>
   );
 }

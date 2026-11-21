@@ -122,8 +122,9 @@ test("AI: stile e contesto aziendale salvati; utilizzo e limiti visibili", async
   await page.reload();
   await expect(page.getByLabel("Stile delle risposte")).toHaveValue("detailed");
   await expect(page.getByLabel(/Informazioni sull'azienda utili all'AI/)).toHaveValue(/serramenti di Torino/);
-  await expect(page.getByRole("progressbar", { name: "Quota AI utilizzata" })).toBeVisible();
-  await expect(page.getByText(/Il limite è stabilito dal gestore della piattaforma/)).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "Crediti AI utilizzati" })).toBeVisible();
+  await expect(page.getByTestId("credits")).toContainText("Crediti AI del mese");
+  await expect(page.getByTestId("credits-state")).toContainText("Il consumo si azzera ogni mese");
 });
 
 test("email e aspetto: preferenze salvate; il periodo predefinito guida la dashboard", async ({ page }) => {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AskCopilotButton } from "@/modules/copilot/ui/ask-button";
 import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
 import { can } from "@/server/auth/permissions";
@@ -16,7 +17,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <form className="flex gap-2" role="search"><Input name="q" defaultValue={q ?? ""} placeholder="Cerca per nome, codice, categoria" aria-label="Cerca nel catalogo" className="w-72" /><button className={buttonVariants({ variant: "outline" })}>Cerca</button></form>
-        {can(ctx.org.role, "data:write") && <Link href="/catalogo/nuovo" className={buttonVariants()}>Nuovo prodotto o servizio</Link>}
+        <div className="flex flex-wrap gap-2">{can(ctx.org.role, "ai:use") && <AskCopilotButton question="Controlla il catalogo: quali voci hanno informazioni mancanti o prezzi incoerenti?" label="Controlla con il Copilot" size="default" />}
+          {can(ctx.org.role, "data:write") && <Link href="/catalogo/nuovo" className={buttonVariants()}>Nuovo prodotto o servizio</Link>}</div>
       </div>
       <Card className="p-0">
         <Table>

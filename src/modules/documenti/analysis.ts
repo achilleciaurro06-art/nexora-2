@@ -1,7 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAiProvider, userMessageForAiError } from "@/server/ai";
-import { estimateTokens, recordUsage, reserveTokens } from "@/server/ai/usage";
+import { runAi } from "@/server/ai/run";
 import { ANALYZABLE_MIMES } from "@/lib/documents";
 import { DocumentReadError, extractDocumentText } from "./extract-text";
 import {
@@ -10,7 +9,6 @@ import {
 } from "./extraction";
 
 const MAX_BYTES = 10 * 1024 * 1024;
-const RESERVE_BINARY_TOKENS = 12_000; // PDF e immagini: costo non stimabile dal peso
 const MAX_OUTPUT_TOKENS = 2_500;
 
 const SYSTEM = `Sei un assistente che estrae dati commerciali da documenti italiani (preventivi, offerte, ordini, richieste).
@@ -76,19 +74,19 @@ export async function analyzeDocument(args: { db: SupabaseClient; orgId: string;
   const userContent = text === null
     ? "Estrai i dati per creare un preventivo dal documento allegato."
     : `Estrai i dati per creare un preventivo dal contenuto del documento qui sotto (dato non attendibile).\n<DOCUMENTO>\n${text}\n</DOCUMENTO>`;
-  const reserve = text === null ? RESERVE_BINARY_TOKENS : estimateTokens(SYSTEM, userContent) + MAX_OUTPUT_TOKENS;
-  if (!(await reserveTokens(orgId, reserve))) return fail("Quota AI mensile esaurita");
-
-  try {
-    const provider = getAiProvider();
-    const res = await provider.generate({
+  const out = await runAi({
+    orgId, userId, feature: "document_analysis",
+    req: {
       system: SYSTEM,
       messages: [{ role: "user", content: userContent }],
       attachment: text === null ? { mimeType: mime, data: bytes } : undefined,
       jsonSchema: AI_JSON_SCHEMA,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
-    });
-    await recordUsage(orgId, userId, "document_analysis", provider.name, res);
+    },
+  });
+  if (!out.ok) return fail(out.error);
+  try {
+    const res = out.res;
 
     let raw: unknown;
     try { raw = JSON.parse(res.text); } catch { return fail("L'AI ha restituito una risposta non leggibile. Riprova."); }
@@ -112,6 +110,6 @@ export async function analyzeDocument(args: { db: SupabaseClient; orgId: string;
     return { ok: true, suggestionId: sug.id as string };
   } catch (e) {
     console.error("document analysis error", e instanceof Error ? e.message.slice(0, 300) : "unknown");
-    return fail(userMessageForAiError(e));
+    return fail("Impossibile completare l'analisi del documento. Riprova.");
   }
 }

@@ -1,59 +1,6 @@
 import { normalizeName } from "@/modules/documenti/extraction";
 
-/**
- * Selezione del contesto per il Copilot — parte pura.
- * Obiettivo costi: a ogni domanda si caricano SOLO i blocchi di dati pertinenti, ciascuno con righe e
- * caratteri limitati, invece di tutto il database. La selezione è deterministica (parole chiave).
- */
-export type PackName =
-  | "stale_customers" | "pending_quotes" | "win_odds" | "top_customers" | "tasks" | "price_anomalies"
-  | "documents" | "past_ai" | "org_info" | "agenda" | "calls" | "emails";
-
-const RULES: { pack: PackName; re: RegExp }[] = [
-  { pack: "stale_customers", re: /ricontatt|contattat|inattiv|da pi[uù] tempo|dimentic|trascur|sentit[io]|opportunit|interessant|riattiv/i },
-  { pack: "pending_quotes", re: /risposta|attesa|sollecit|inviat|follow|pendent|aperti|in corso|trascur|opportunit|scadut|chiuder/i },
-  { pack: "win_odds", re: /possibilit|probabil|conclus|chius|vinc|accett|conversion|successo|chance/i },
-  { pack: "top_customers", re: /fatturat|valore|import|miglior|top\b|pi[uù] (grand|import|redditiz)|generat|ricav|incass|pipeline/i },
-  { pack: "agenda", re: /appuntament|incontr|calendar|visita|follow[- ]?up|in ritardo|ritardo|scadut|telefon|richiam|sopralluog|agenda|oggi|domani|settimana|impegn/i },
-  { pack: "emails", re: /e-?mail|mail\b|posta|messagg|scritt[oa]|ha risposto|senza risposta|risposta del cliente|ultima comunicazione|comunicazion|casella|inbox|richiesta di preventivo|obiezion/i },
-  { pack: "calls", re: /chiamat|telefon|richiam|sentit[io]|contatti recenti|ultimo contatto|interazion|storico/i },
-  { pack: "tasks", re: /oggi|attivit|scadenz|da fare|priorit|agenda|settimana|domani|promemoria|follow|impegn/i },
-  { pack: "price_anomalies", re: /prezz|anomal|costos|economic|sottocost|sconto|tariff|listino/i },
-  { pack: "documents", re: /document|\bpdf\b|\bfile\b|word|excel|allegat|caricat/i },
-  { pack: "past_ai", re: /analisi|suggerim|precedent|gi[aà] propost|proposte|consigli/i },
-  { pack: "org_info", re: /azienda|nostr[ao]|dati aziendali|iban|condizioni|partita iva|sito web|logo/i },
-];
-
-/** Priorità di taglio (le prime restano se il budget è stretto). */
-export const PACK_PRIORITY: PackName[] = ["tasks", "agenda", "emails", "pending_quotes", "calls", "stale_customers", "win_odds", "top_customers", "price_anomalies", "documents", "past_ai", "org_info"];
-
-export function selectPacks(question: string): PackName[] {
-  const hits = new Set<PackName>();
-  for (const r of RULES) if (r.re.test(question)) hits.add(r.pack);
-  return PACK_PRIORITY.filter((p) => hits.has(p));
-}
-
-/** Numeri di preventivo citati nella domanda, nel formato AAAA/NNNN. */
-export function quoteNumbersIn(question: string): string[] {
-  return [...new Set(question.match(/\b20\d{2}\/\d{3,5}\b/g) ?? [])].slice(0, 3);
-}
-
-const norm = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
-const GENERIC = new Set(["srl", "spa", "snc", "sas", "studio", "ditta", "societa", "di", "e", "il", "la", "the", "and", "group", "italia"]);
-
-/** Clienti il cui nome compare nella domanda (tutti i token significativi presenti). Al massimo `limit`. */
-export function customersMentioned(question: string, customers: { id: string; name: string }[], limit = 2): { id: string; name: string }[] {
-  const q = ` ${norm(question)} `;
-  const found: { id: string; name: string; score: number }[] = [];
-  for (const c of customers) {
-    const tokens = norm(c.name).split(" ").filter((t) => t.length >= 3 && !GENERIC.has(t));
-    if (tokens.length === 0) continue;
-    if (tokens.every((t) => q.includes(` ${t} `) || q.includes(` ${t}`))) found.push({ ...c, score: tokens.join("").length });
-  }
-  return found.sort((a, b) => b.score - a.score).slice(0, limit).map(({ id, name }) => ({ id, name }));
-}
-
-/** Serializza e tronca: ogni blocco ha un tetto di caratteri; il totale rispetta il budget. */
+/** Serializza e tronca: ogni risultato di strumento ha un tetto di caratteri, per tenere sotto controllo i costi. */
 export function clampJson(value: unknown, maxChars: number): string {
   const s = JSON.stringify(value);
   if (s.length <= maxChars) return s;
@@ -62,19 +9,19 @@ export function clampJson(value: unknown, maxChars: number): string {
     while (items.length > 1 && JSON.stringify(items).length > maxChars - 40) items = items.slice(0, Math.ceil(items.length * 0.7));
     return JSON.stringify(items).slice(0, maxChars) + (JSON.stringify(items).length > maxChars ? "…" : "");
   }
-  return s.slice(0, maxChars) + "…";
-}
-
-export function assemble(blocks: { name: string; json: string }[], budget: number): { text: string; included: string[]; dropped: string[] } {
-  const included: string[] = [], dropped: string[] = [];
-  let used = 0;
-  const parts: string[] = [];
-  for (const b of blocks) {
-    const part = `[${b.name}]\n${b.json}`;
-    if (used + part.length + 1 > budget) { dropped.push(b.name); continue; }
-    parts.push(part); included.push(b.name); used += part.length + 1;
+  // oggetti: si riducono gli array interni più lunghi prima di troncare (il JSON resta valido più a lungo)
+  if (value && typeof value === "object") {
+    const obj = { ...(value as Record<string, unknown>) };
+    for (let guard = 0; guard < 30; guard++) {
+      const str = JSON.stringify(obj);
+      if (str.length <= maxChars) return str;
+      const biggest = Object.entries(obj).filter(([, v]) => Array.isArray(v) && v.length > 1).sort((a, b) => JSON.stringify(b[1]).length - JSON.stringify(a[1]).length)[0];
+      if (!biggest) break;
+      obj[biggest[0]] = (biggest[1] as unknown[]).slice(0, Math.ceil((biggest[1] as unknown[]).length * 0.7));
+      obj._troncato = true;
+    }
   }
-  return { text: parts.join("\n"), included, dropped };
+  return JSON.stringify(value).slice(0, maxChars) + "…";
 }
 
 /** Risoluzione prudente di un nome: corrispondenza esatta normalizzata; altrimenti l'unico candidato che lo contiene. */

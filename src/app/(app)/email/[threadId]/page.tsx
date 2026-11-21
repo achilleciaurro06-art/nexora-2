@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AskCopilotButton } from "@/modules/copilot/ui/ask-button";
 import { notFound } from "next/navigation";
 import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
@@ -112,7 +113,7 @@ export default async function ThreadPage({ params, searchParams }: { params: Pro
             {t.quote_id && <p className="mt-2 text-sm"><Link className="text-primary hover:underline" href={`/preventivi/${t.quote_id}`}>Vai al preventivo collegato</Link></p>}
           </Card>
           {canWrite && <Card><h3 className="mb-2 font-medium">Lavoro collegato</h3><WorkPanel threadId={threadId} hasCustomer={!!t.customer_id} task={taskRow.data as { id: string; title: string } | null} followUp={fuRow.data as { id: string; title: string } | null} openTasks={(openTasks ?? []) as { id: string; title: string }[]} openFollowUps={(openFus ?? []) as { id: string; title: string }[]} /></Card>}
-          {lastMsg && can(ctx.org.role, "ai:use") && <Card><h3 className="mb-2 font-medium">Copilot</h3><AnalysisPanel messageId={lastMsg.id as string} threadId={threadId} canCreateFollowUp={!!t.customer_id} hasTask={!!t.task_id} hasFollowUp={!!t.follow_up_id} /></Card>}
+          {lastMsg && can(ctx.org.role, "ai:use") && <Card><h3 className="mb-2 font-medium">Copilot</h3><div className="mb-3 flex flex-wrap gap-2"><AskCopilotButton question="Riassumi questa conversazione" label="Riassumi" /><AskCopilotButton question="Preparami una risposta professionale a questa conversazione" label="Prepara una risposta" /><AskCopilotButton question="Quali richieste e obiezioni commerciali ci sono in questa conversazione?" label="Richieste e obiezioni" /><AskCopilotButton question="Suggerisci un'attività collegata a questa conversazione" label="Suggerisci un'attività" /></div><AnalysisPanel messageId={lastMsg.id as string} threadId={threadId} canCreateFollowUp={!!t.customer_id} hasTask={!!t.task_id} hasFollowUp={!!t.follow_up_id} /></Card>}
         </div>
       </div>
     </>

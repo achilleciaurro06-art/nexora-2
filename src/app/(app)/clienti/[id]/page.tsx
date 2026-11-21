@@ -21,6 +21,7 @@ import { APPOINTMENT_STATUS_LABEL, CALL_DIRECTION_LABEL, CALL_OUTCOME_LABEL, typ
 import { FollowUpBadge } from "@/modules/followup/ui/follow-up-status";
 import { OPEN_STATUSES, isOverdue, type FollowUpStatus } from "@/modules/followup/states";
 import { eventHref } from "@/modules/clienti/timeline";
+import { CustomerAiPanel } from "@/modules/clienti/ui/ai-panel";
 import { listThreads } from "@/modules/email/queries";
 import { Alert, Badge, Card, PageHeader, Table } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -123,6 +124,8 @@ export default async function CustomerPage({ params, searchParams }: { params: P
       ["Conversione (accettati su decisi)", s?.conversion_pct == null ? "—" : `${s.conversion_pct}%`],
     ];
     return (
+      <div className="space-y-6">
+      <CustomerAiPanel db={db} orgId={orgId} customerId={id} customerName={customer!.name} canUseAi={can(ctx.org.role, "ai:use")} />
       <div className="grid gap-6 xl:grid-cols-[3fr_2fr]">
         <Card>
           <h2 className="mb-1 font-medium">Informazioni generali</h2>
@@ -142,6 +145,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
           </Table>
           <p className="mt-3 text-xs text-muted">Ultima attività commerciale: {s?.last_activity_at ? dtt(s.last_activity_at) : "—"}<br />Ultimo contatto (nota, attività chiusa o preventivo inviato/deciso): {s?.last_contact_at ? dtt(s.last_contact_at) : "—"}</p>
         </Card>
+      </div>
       </div>
     );
   }

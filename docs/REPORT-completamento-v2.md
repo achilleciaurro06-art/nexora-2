@@ -171,3 +171,16 @@ Dettagli di configurazione, sicurezza e limiti: `docs/email.md`.
 **Test:** 429 controlli SQL (suite completa verde), 241 unit/integrazione (6 con SMTP/IMAP reali), 94 E2E (15 nuovi), tsc/eslint/build puliti.
 
 **Limiti noti:** allegati caricati max 4 MB; nessuna pulizia automatica degli allegati di bozze abbandonate; risposte Graph raggruppate per conversazione; sincronizzazione senza cron configurato; scope Gmail `gmail.readonly` soggetto a verifica Google per uso pubblico; niente notifiche push/email; letto/non letto unico per casella.
+
+---
+
+## Fase 7 – AI Core, Copilot intelligente e AI proattiva
+
+Dettagli: `docs/ai.md`. Migrazione `20261119000022_ai_core.sql` (additiva).
+
+- **AI Core**: 19 strumenti di sola lettura con permessi/validazione lato server, orchestratore a passi con limiti di costo, contesto della pagina verificato, provider astratto (Gemini + provider simulato solo test).
+- **Copilot**: pannello su ogni pagina e pagina dedicata, conversazioni persistenti, stati di avanzamento in streaming, fonti consultate, domande suggerite per pagina, azioni proposte con conferma ed esito.
+- **Proattività**: insight da regole su dati reali (clienti di valore fermi, preventivi senza risposta, follow-up scaduti, email senza risposta, fatture non incassate, calo fatturato/clienti, appuntamenti, catalogo) con deduplicazione, aggiornamento, scadenza, stato.
+- **Dashboard** con sintesi, opportunità, attenzione, azioni consigliate; **moduli**: scheda cliente (analisi), preventivi, email, appuntamenti (briefing), catalogo, promemoria.
+- **Crediti**: prenotazione/contabilizzazione/rilascio atomici, limiti e prezzi configurabili, costo sempre dichiarato stimato.
+- **Test**: SQL 489, unit/integrazione 296, E2E 108 (14 nuovi), tsc/eslint/build puliti. Gemini reale non verificabile da qui.

@@ -20,6 +20,10 @@ const schema = z.object({
   MS_OAUTH_TENANT: z.preprocess((v) => (v === "" ? undefined : v), z.string().default("common")),
   EMAIL_ALLOW_PRIVATE_HOSTS: optional(z.enum(["true", "false"])),
   CRON_SECRET: optional(z.string().min(16)),
+  // SOLO test: "mock" usa il provider simulato (mai attivo su Vercel produzione, vedi getAiProvider)
+  AI_PROVIDER: optional(z.enum(["gemini", "mock"])),
+  // richieste Copilot per utente ogni 10 minuti (default 20)
+  AI_RATE_LIMIT_PER_10MIN: optional(z.coerce.number().int().min(1).max(1000)),
   NEXT_PUBLIC_APP_URL: optional(z.url()),
 });
 

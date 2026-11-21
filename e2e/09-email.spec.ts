@@ -278,7 +278,7 @@ test("ricerca, filtri e viste della posta", async ({ page }) => {
   await expect(page.getByTestId("threads").locator("li", { hasText: RECEIVED })).toBeVisible(); // conversazione con un messaggio inviato
   await expect(page.getByTestId("threads").locator("li", { hasText: `Ambigua ${TAG}` })).toHaveCount(0); // solo conversazioni con messaggi inviati
   await page.goto("/email?cartella=arrivo&nonletti=1");
-  for (const li of await page.getByTestId("threads").locator("li").all()) await expect(li).toHaveAttribute("data-unread", "true");
+  for (const li of await page.getByTestId("threads").locator("li", { hasNotText: "Nessuna conversazione con questi filtri" }).all()) await expect(li).toHaveAttribute("data-unread", "true");
   await page.goto("/email?cartella=tutte&cliente=" + rossi());
   await expect(page.getByTestId("threads").locator("li", { hasText: RECEIVED })).toBeVisible();
 });

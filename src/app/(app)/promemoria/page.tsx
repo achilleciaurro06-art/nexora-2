@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AskCopilotButton } from "@/modules/copilot/ui/ask-button";
 import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
 import { can } from "@/server/auth/permissions";
@@ -54,7 +55,8 @@ export default async function RemindersPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader title="Promemoria" description={`Il lavoro di oggi in un solo posto: attività, follow-up, appuntamenti e telefonate da fare. Prossimi = entro ${UPCOMING_DAYS} giorni.`} />
+      <PageHeader title="Promemoria" description={`Il lavoro di oggi in un solo posto: attività, follow-up, appuntamenti e telefonate da fare. Prossimi = entro ${UPCOMING_DAYS} giorni.`}
+        actions={can(ctx.org.role, "ai:use") ? <div className="flex flex-wrap gap-2"><AskCopilotButton question="Cosa devo fare oggi?" label="Cosa devo fare oggi?" /><AskCopilotButton question="Quali follow-up sono in ritardo e quali attività hanno priorità?" label="Priorità" /></div> : undefined} />
       <dl className="mb-6 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6" data-testid="reminder-counters">
         {([["Oggi", counts.today, "today"], ["In ritardo", counts.overdue, "overdue"], ["Prossimi", counts.upcoming, "upcoming"], ["Completati", counts.done, "done"]] as const).map(([k, n, key]) => (
           <Card key={k} className={cn("p-3", key === "overdue" && n > 0 && "border-danger")}><dt className="text-muted">{k}</dt><dd className={cn("mt-0.5 text-2xl font-semibold", key === "overdue" && n > 0 && "text-danger")} data-testid={`count-${key}`}>{n}</dd></Card>

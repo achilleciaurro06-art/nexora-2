@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AskCopilotButton } from "@/modules/copilot/ui/ask-button";
 import { notFound } from "next/navigation";
 import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
@@ -46,6 +47,7 @@ export default async function QuotePage({ params, searchParams }: { params: Prom
         actions={
           <div className="no-print flex flex-wrap gap-2">
             <a href={`/preventivi/${id}/pdf`} download className={buttonVariants({ variant: "outline" })}>Scarica PDF</a>
+            {can(ctx.org.role, "ai:use") && <AskCopilotButton question="Analizza questo preventivo e dimmi cosa potrei migliorare" label="Analizza con il Copilot" size="default" />}
             {canWrite && !customer?.archived_at && <Link href={`/email/nuova?preventivo=${id}`} className={buttonVariants({ variant: "outline" })}>Invia per email</Link>}
             {canWrite && !customer?.archived_at && <form action={duplicateQuoteAction.bind(null, id)} className="inline"><Button variant="outline">Duplica</Button></form>}
             {canWrite && <Link href={`/attivita/nuova?preventivo=${id}`} className={buttonVariants({ variant: "outline" })}>Crea attività</Link>}

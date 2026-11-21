@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AskCopilotButton } from "@/modules/copilot/ui/ask-button";
 import { notFound } from "next/navigation";
 import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
@@ -42,6 +43,7 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
       <PageHeader title={a.title as string} description={`${fmtDateTime(a.starts_at as string)} – ${fmtTime(a.ends_at as string)}${a.location ? ` · ${a.location as string}` : ""}`}
         actions={
           <div className="flex flex-wrap gap-2">
+            {can(ctx.org.role, "ai:use") && <AskCopilotButton question="Prepara un briefing per questo appuntamento" label="Prepara il briefing" size="default" />}
             {a.customer_id && <Link href={`/clienti/${a.customer_id}`} className={buttonVariants({ variant: "outline" })}>Scheda cliente</Link>}
             {canWrite && status === "scheduled" && btn("Segna completato", "completed", "default")}
             {canWrite && status === "scheduled" && btn("Annulla appuntamento", "cancelled", "danger")}

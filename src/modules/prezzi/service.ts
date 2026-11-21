@@ -1,8 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAiProvider, userMessageForAiError } from "@/server/ai";
-import { estimateTokens, recordUsage, reserveTokens } from "@/server/ai/usage";
+import { runAi } from "@/server/ai/run";
 import { analyzeItem, isSafeRationale, MIN_SAMPLES, netUnitCents, type HistoryItem, type ItemAnalysis } from "./stats";
 
 /** Storico di riferimento: voci di preventivi INVIATI o ACCETTATI dell'azienda (le bozze non sono prezzi "reali"). */
@@ -62,22 +61,17 @@ export async function analyzeQuotePrices(args: { db: SupabaseClient; orgId: stri
     const payload = JSON.stringify(assessable.map(({ it, index }) => ({
       index, voce: it.description.slice(0, 120), verdetto: it.verdict, confronti_storici: it.stats?.n,
     })));
-    const reserve = estimateTokens(SYSTEM, payload) + 800;
-    if (await reserveTokens(orgId, reserve)) {
+    const out = await runAi({ orgId, userId, feature: "price_analysis", req: { system: SYSTEM, messages: [{ role: "user", content: payload }], jsonSchema: RATIONALE_SCHEMA, maxOutputTokens: 800 } });
+    // se l'AI non è disponibile (o i crediti sono finiti) si prosegue con le motivazioni deterministiche: l'analisi numerica resta valida
+    if (out.ok) {
+      model = out.res.model;
       try {
-        const provider = getAiProvider();
-        const res = await provider.generate({ system: SYSTEM, messages: [{ role: "user", content: payload }], jsonSchema: RATIONALE_SCHEMA, maxOutputTokens: 800 });
-        await recordUsage(orgId, userId, "price_analysis", provider.name, res);
-        model = res.model;
-        const parsed = rationaleSchema.safeParse(JSON.parse(res.text));
+        const parsed = rationaleSchema.safeParse(JSON.parse(out.res.text));
         if (parsed.success) for (const r of parsed.data.rationales) {
           const target = items[r.index];
           if (target && assessable.some((a) => a.index === r.index) && isSafeRationale(r.text)) target.rationale = r.text.trim();
         }
-      } catch (e) {
-        console.error("price analysis AI error", userMessageForAiError(e));
-        // si prosegue con le motivazioni deterministiche: l'analisi numerica resta valida
-      }
+      } catch { /* risposta non leggibile: restano le motivazioni deterministiche */ }
     }
   }
 
