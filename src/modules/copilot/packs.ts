@@ -7,7 +7,7 @@ import { normalizeName } from "@/modules/documenti/extraction";
  */
 export type PackName =
   | "stale_customers" | "pending_quotes" | "win_odds" | "top_customers" | "tasks" | "price_anomalies"
-  | "documents" | "past_ai" | "org_info" | "agenda" | "calls";
+  | "documents" | "past_ai" | "org_info" | "agenda" | "calls" | "emails";
 
 const RULES: { pack: PackName; re: RegExp }[] = [
   { pack: "stale_customers", re: /ricontatt|contattat|inattiv|da pi[uù] tempo|dimentic|trascur|sentit[io]|opportunit|interessant|riattiv/i },
@@ -15,6 +15,7 @@ const RULES: { pack: PackName; re: RegExp }[] = [
   { pack: "win_odds", re: /possibilit|probabil|conclus|chius|vinc|accett|conversion|successo|chance/i },
   { pack: "top_customers", re: /fatturat|valore|import|miglior|top\b|pi[uù] (grand|import|redditiz)|generat|ricav|incass|pipeline/i },
   { pack: "agenda", re: /appuntament|incontr|calendar|visita|follow[- ]?up|in ritardo|ritardo|scadut|telefon|richiam|sopralluog|agenda|oggi|domani|settimana|impegn/i },
+  { pack: "emails", re: /e-?mail|mail\b|posta|messagg|scritt[oa]|ha risposto|senza risposta|risposta del cliente|ultima comunicazione|comunicazion|casella|inbox|richiesta di preventivo|obiezion/i },
   { pack: "calls", re: /chiamat|telefon|richiam|sentit[io]|contatti recenti|ultimo contatto|interazion|storico/i },
   { pack: "tasks", re: /oggi|attivit|scadenz|da fare|priorit|agenda|settimana|domani|promemoria|follow|impegn/i },
   { pack: "price_anomalies", re: /prezz|anomal|costos|economic|sottocost|sconto|tariff|listino/i },
@@ -24,7 +25,7 @@ const RULES: { pack: PackName; re: RegExp }[] = [
 ];
 
 /** Priorità di taglio (le prime restano se il budget è stretto). */
-export const PACK_PRIORITY: PackName[] = ["tasks", "agenda", "pending_quotes", "calls", "stale_customers", "win_odds", "top_customers", "price_anomalies", "documents", "past_ai", "org_info"];
+export const PACK_PRIORITY: PackName[] = ["tasks", "agenda", "emails", "pending_quotes", "calls", "stale_customers", "win_odds", "top_customers", "price_anomalies", "documents", "past_ai", "org_info"];
 
 export function selectPacks(question: string): PackName[] {
   const hits = new Set<PackName>();

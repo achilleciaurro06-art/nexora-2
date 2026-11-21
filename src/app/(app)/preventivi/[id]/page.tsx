@@ -46,6 +46,7 @@ export default async function QuotePage({ params, searchParams }: { params: Prom
         actions={
           <div className="no-print flex flex-wrap gap-2">
             <a href={`/preventivi/${id}/pdf`} download className={buttonVariants({ variant: "outline" })}>Scarica PDF</a>
+            {canWrite && !customer?.archived_at && <Link href={`/email/nuova?preventivo=${id}`} className={buttonVariants({ variant: "outline" })}>Invia per email</Link>}
             {canWrite && !customer?.archived_at && <form action={duplicateQuoteAction.bind(null, id)} className="inline"><Button variant="outline">Duplica</Button></form>}
             {canWrite && <Link href={`/attivita/nuova?preventivo=${id}`} className={buttonVariants({ variant: "outline" })}>Crea attività</Link>}
             {canWrite && quote.status === "draft" && <Link href={`/preventivi/${id}/modifica`} className={buttonVariants({ variant: "outline" })}>Modifica</Link>}

@@ -5,7 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { fmtTime } from "@/lib/datetime";
 import { TIMELINE_FILTERS, eventHref, groupByDay, parseTimelineFilter, type TimelineEvent } from "../timeline";
 
-const ICON: Record<string, string> = { quote: "📄", task: "✅", document: "📎", contact: "👤", note: "📝", customer: "🏢", appointment: "📅", call: "📞", follow_up: "🔁" };
+const ICON: Record<string, string> = { quote: "📄", task: "✅", document: "📎", contact: "👤", note: "📝", customer: "🏢", appointment: "📅", call: "📞", follow_up: "🔁", email: "✉️" };
 
 export async function TimelineSection({ orgId, customerId, filter, names }: { orgId: string; customerId: string; filter?: string; names: Map<string, string> }) {
   const f = parseTimelineFilter(filter);

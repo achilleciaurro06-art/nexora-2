@@ -15,6 +15,7 @@ const config = [
       "src/modules/amministrazione/**",
       "src/modules/organizzazioni/**",
       "src/server/ai/**",
+      "src/modules/email/**",
     ],
     rules: {
       "no-restricted-imports": ["error", { patterns: [{ group: ["**/supabase/admin"], message: "Il client service-role è vietato fuori dai moduli autorizzati." }] }],

@@ -21,6 +21,7 @@ import { APPOINTMENT_STATUS_LABEL, CALL_DIRECTION_LABEL, CALL_OUTCOME_LABEL, typ
 import { FollowUpBadge } from "@/modules/followup/ui/follow-up-status";
 import { OPEN_STATUSES, isOverdue, type FollowUpStatus } from "@/modules/followup/states";
 import { eventHref } from "@/modules/clienti/timeline";
+import { listThreads } from "@/modules/email/queries";
 import { Alert, Badge, Card, PageHeader, Table } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { RemoveButton } from "@/components/ui/remove-button";
@@ -343,9 +344,10 @@ export default async function CustomerPage({ params, searchParams }: { params: P
 
   /* ------------------------------------------------------------------ tab: documenti e comunicazioni */
   async function DocumentsTab() {
-    const [{ data: docs }, { data: notes }] = await Promise.all([
+    const [{ data: docs }, { data: notes }, emailThreads] = await Promise.all([
       db.from("documents").select("id, name, mime_type, created_at").eq("organization_id", orgId).eq("customer_id", id).is("deleted_at", null).order("created_at", { ascending: false }).limit(50),
       db.from("customer_notes").select("id, body, created_at, created_by").eq("organization_id", orgId).eq("customer_id", id).order("created_at", { ascending: false }).limit(30),
+      listThreads(db, orgId, { folder: "tutte", customerId: id, limit: 15 }),
     ]);
     return (
       <div className="grid gap-6 xl:grid-cols-[3fr_2fr]">
@@ -389,7 +391,24 @@ export default async function CustomerPage({ params, searchParams }: { params: P
               </ul>
             )}
           </Card>
-          <Card><h2 className="mb-2 font-medium">Email</h2><p className="text-sm text-muted">L&apos;invio e la ricezione delle email collegate al cliente non sono ancora disponibili: arriveranno con la fase dedicata alle email.</p></Card>
+          <Card data-testid="customer-emails">
+            <div className="mb-3 flex items-center justify-between"><h2 className="font-medium">Email</h2>{canWrite && <Link className="text-sm text-primary hover:underline" href={`/email/nuova?cliente=${id}`}>+ Scrivi</Link>}</div>
+            {emailThreads.length === 0 ? <p className="text-sm text-muted">Nessuna email collegata a questo cliente.</p> : (
+              <ul className="space-y-3 text-sm">
+                {emailThreads.map((t) => (
+                  <li key={t.id} className="space-y-0.5" data-testid="customer-email">
+                    <p className="flex items-center justify-between gap-2">
+                      <Link className="min-w-0 truncate font-medium text-primary hover:underline" href={`/email/${t.id}`}>{t.subject || "(senza oggetto)"}</Link>
+                      <span className="shrink-0 text-xs text-muted">{t.last ? fmtDateTime(t.last.message_at) : ""}</span>
+                    </p>
+                    <p className="truncate text-xs text-muted">{t.last ? `${t.last.direction === "inbound" ? "Ricevuta da" : "Inviata a"} ${t.last.direction === "inbound" ? (t.last.from_name || t.last.from_address) : t.last.to.map((a) => a.address).join(", ")} — ${t.last.snippet ?? ""}` : ""}</p>
+                    <p className="flex items-center gap-2 text-xs text-muted">{t.message_count} messagg{t.message_count === 1 ? "io" : "i"}{t.last?.has_attachments ? " · 📎 allegati" : ""}{t.unread_count > 0 ? <Badge className="border-primary text-primary">{t.unread_count} non lett{t.unread_count === 1 ? "a" : "e"}</Badge> : null}
+                      {canWrite && t.last && <Link className="text-primary hover:underline" href={`/email/${t.id}`}>Apri e rispondi</Link>}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
         </div>
       </div>
     );
@@ -454,7 +473,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
   /* ------------------------------------------------------------------ eliminazione definitiva (solo archiviati, titolare/amministratori) */
   async function DeletePanel() {
     const b = await getDeleteBlockers(db, id);
-    const blockers = b ? ([["preventivi", b.quotes], ["fatture registrate", b.invoices], ["documenti", b.documents], ["attività", b.tasks], ["appuntamenti", b.appointments], ["chiamate", b.calls], ["follow-up", b.follow_ups]] as [string, number][]).filter(([, n]) => n > 0) : [];
+    const blockers = b ? ([["preventivi", b.quotes], ["fatture registrate", b.invoices], ["documenti", b.documents], ["attività", b.tasks], ["appuntamenti", b.appointments], ["chiamate", b.calls], ["follow-up", b.follow_ups], ["conversazioni email", b.emails]] as [string, number][]).filter(([, n]) => n > 0) : [];
     const willRemove = b ? ([["referenti", b.contacts], ["note", b.notes]] as [string, number][]).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`) : [];
     return (
       <Card className="mt-8 border-danger/40" data-testid="delete-panel">

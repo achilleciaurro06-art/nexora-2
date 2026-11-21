@@ -8,15 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { getSector } from "@/modules/settore/queries";
+import { unreadCount } from "@/modules/email/queries";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireContext();
   const admin = await isPlatformAdmin(ctx.userId).catch(() => false);
   const db = await createClient();
-  const [unread, { data: prof }, { terms }] = await Promise.all([
+  const [unread, { data: prof }, { terms }, emailUnread] = await Promise.all([
     refreshAndCountUnread(db, ctx.userId).catch(() => 0),
     db.from("profiles").select("avatar_path").eq("id", ctx.userId).maybeSingle(),
     getSector(db, ctx.org.organizationId),
+    unreadCount(db, ctx.org.organizationId).catch(() => 0),
   ]);
   const avatarUrl = prof?.avatar_path ? (await db.storage.from("avatars").createSignedUrl(prof.avatar_path as string, 3600)).data?.signedUrl : null;
   return (
@@ -37,7 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <span>Notifiche</span>
           {unread > 0 && <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">{unread > 99 ? "99+" : unread}</span>}
         </Link>
-        <Nav isPlatformAdmin={admin} labels={{ "/clienti": terms.customer_plural, "/preventivi": terms.quote_plural }} />
+        <Nav isPlatformAdmin={admin} labels={{ "/clienti": terms.customer_plural, "/preventivi": terms.quote_plural }} badges={{ "/email": emailUnread }} />
         <form action={logoutAction} className="mt-6">
           <Link href="/impostazioni/profilo" className="mb-2 flex items-center gap-2 rounded-md p-1 hover:bg-border/50" aria-label="Il tuo profilo">
             <Avatar name={ctx.fullName ?? ctx.email} url={avatarUrl} size={28} />

@@ -153,3 +153,21 @@ Superati: 74 test unitari (11 file), 98 controlli SQL su RLS/ruoli/isolamento/no
 - Gli appuntamenti non si sincronizzano con calendari esterni e non c'è la ricorrenza; i partecipanti sono solo collaboratori NEXORA.
 - Le tipologie di attività non includono «follow-up» e «appuntamento» perché hanno moduli propri (con scorciatoie di creazione).
 - Il centro Promemoria mostra al massimo 14 giorni in avanti e gli ultimi 30 giorni di completati.
+
+---
+
+## Fase 6 – Email, invio, casella aziendale e storico clienti
+
+Dettagli di configurazione, sicurezza e limiti: `docs/email.md`.
+
+**Realizzato (codice):** collegamento caselle (Gmail e Outlook via OAuth, altra casella via IMAP/SMTP); invio reale (l'email è «inviata» solo dopo la conferma del provider, idempotente, nessun doppio invio); ricezione con sincronizzazione incrementale e idempotente (manuale, all'apertura, e via `/api/email/sync` con `CRON_SECRET`); conversazioni; collegamento automatico al CRM solo per indirizzo esatto (certo → collega; ambiguo → l'utente sceglie; nessuno → manuale; mai per somiglianza di nome) e collegamento/scollegamento manuale con cliente, referente, preventivo, attività, follow-up; storico email nella scheda cliente che alimenta «ultimo contatto» (i clienti archiviati mantengono lo storico ma non si può scrivere dai selettori normali); sezione Email generale (arrivo, inviate, bozze, tutte, caselle) con ricerca e filtri; allegati in bucket privato con download autorizzato; bozze con salvataggio automatico, 6 modelli iniziali, firma per casella/collaboratore; invio preventivo con PDF; creazione attività/follow-up da email senza duplicati; analisi Copilot (l'AI propone soltanto, il testo delle email è dato non attendibile).
+
+**Verificato davvero:** IMAP/SMTP contro una casella locale reale (Dovecot + server SMTP di prova): collegamento, invio con allegato/Ccn/risposta, rifiuto 550, sincronizzazione incrementale, deduplica della copia in Inviata, blocco SSRF; interfaccia completa in browser.
+**Solo con API simulate (non provato con account reali):** Gmail, Microsoft 365. **Non verificabile:** analisi AI (nessuna chiave Gemini; provata solo la gestione dell'errore).
+**Configurazione ancora necessaria:** `EMAIL_ENCRYPTION_KEY`, credenziali OAuth Google/Microsoft, `CRON_SECRET` e uno scheduler esterno; nessuna modifica a Vercel/produzione è stata fatta.
+
+**Migrazione:** `20261119000021_email.sql` (additiva; **non applicata in produzione**).
+
+**Test:** 429 controlli SQL (suite completa verde), 241 unit/integrazione (6 con SMTP/IMAP reali), 94 E2E (15 nuovi), tsc/eslint/build puliti.
+
+**Limiti noti:** allegati caricati max 4 MB; nessuna pulizia automatica degli allegati di bozze abbandonate; risposte Graph raggruppate per conversazione; sincronizzazione senza cron configurato; scope Gmail `gmail.readonly` soggetto a verifica Google per uso pubblico; niente notifiche push/email; letto/non letto unico per casella.

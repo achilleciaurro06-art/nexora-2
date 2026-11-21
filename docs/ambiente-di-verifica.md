@@ -18,6 +18,9 @@ npm run verify:down    # ferma i servizi
 Se Playwright non trova il browser: `PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test`.
 Riavviare l'app tra una corsa e l'altra azzera il limitatore di tentativi di accesso (in memoria).
 
+## Posta di prova (modulo Email)
+`scripts/verify-stack/mail-up.sh` avvia una casella IMAP/SMTP **vera** in locale (Dovecot + server SMTP di prova) per verificare invio, ricezione e sincronizzazione; vedi `docs/email.md`. Le variabili `EMAIL_ENCRYPTION_KEY` (valore di prova), `EMAIL_ALLOW_PRIVATE_HOSTS=true` e `CRON_SECRET` sono impostate solo da `run-app.sh` per l'ambiente di verifica.
+
 ## Cosa NON verifica
-Gemini (nessuna chiave: si verifica solo la gestione dell'errore e le parti che non chiamano l'AI), invio email, notifiche push,
+Gemini (nessuna chiave: si verifica solo la gestione dell'errore e le parti che non chiamano l'AI), Gmail e Microsoft 365 reali (solo API simulate), notifiche push,
 il comportamento di Vercel (regioni, header di piattaforma) e i dati reali di produzione.

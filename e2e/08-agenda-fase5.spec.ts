@@ -359,6 +359,7 @@ test("tipologie di attività configurabili senza toccare il database", async ({ 
   await expect(page.getByLabel("Tipologia").locator("option", { hasText: "Sopralluogo tecnico" })).toHaveCount(1);
   await page.goto("/impostazioni/settore");
   await page.getByTestId("task-types").locator("li", { hasText: "Sopralluogo tecnico" }).getByRole("button", { name: "Disattiva" }).click();
+  await expect(page.getByTestId("task-types").locator("li", { hasText: "Sopralluogo tecnico" }).getByRole("button", { name: "Riattiva" })).toBeVisible();
   await page.goto("/attivita/nuova");
   await expect(page.getByLabel("Tipologia").locator("option", { hasText: "Sopralluogo tecnico" })).toHaveCount(0);
 });

@@ -15,3 +15,4 @@ $P -f tests/40_quotes_complete.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETA
 $P -f tests/50_sector.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"
 $P -f tests/60_crm.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"
 $P -f tests/70_agenda.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"
+$P -f tests/80_email.sql 2>&1 | grep -E "ok   -|FAIL|ERROR|PASSED|DETAIL|CONTEXT" | sed "s/^psql:[^ ]* //"

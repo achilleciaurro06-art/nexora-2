@@ -11,6 +11,16 @@ const schema = z.object({
   GEMINI_API_KEY: optional(z.string().min(10)),
   GEMINI_MODEL: z.preprocess((v) => (v === "" ? undefined : v), z.string().default("gemini-3.5-flash-lite")),
   GEMINI_FALLBACK_MODEL: z.preprocess((v) => (v === "" ? undefined : v), z.string().default("gemini-3.8-flash")),
+  // email (tutto facoltativo: senza queste variabili i relativi collegamenti risultano "non configurati")
+  EMAIL_ENCRYPTION_KEY: optional(z.string().min(32)),
+  GOOGLE_OAUTH_CLIENT_ID: optional(z.string().min(10)),
+  GOOGLE_OAUTH_CLIENT_SECRET: optional(z.string().min(10)),
+  MS_OAUTH_CLIENT_ID: optional(z.string().min(10)),
+  MS_OAUTH_CLIENT_SECRET: optional(z.string().min(10)),
+  MS_OAUTH_TENANT: z.preprocess((v) => (v === "" ? undefined : v), z.string().default("common")),
+  EMAIL_ALLOW_PRIVATE_HOSTS: optional(z.enum(["true", "false"])),
+  CRON_SECRET: optional(z.string().min(16)),
+  NEXT_PUBLIC_APP_URL: optional(z.url()),
 });
 
 let cached: z.infer<typeof schema> | undefined;

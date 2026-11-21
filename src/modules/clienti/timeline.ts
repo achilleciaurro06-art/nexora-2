@@ -3,6 +3,7 @@ import { fmtLongDay } from "@/lib/datetime";
 export const TIMELINE_FILTERS = [
   { key: "all", label: "Tutto", entities: null },
   { key: "quote", label: "Preventivi", entities: ["quote"] },
+  { key: "email", label: "Email", entities: ["email"] },
   { key: "task", label: "Attività", entities: ["task"] },
   { key: "interazioni", label: "Appuntamenti, chiamate, follow-up", entities: ["appointment", "call", "follow_up"] },
   { key: "document", label: "Documenti", entities: ["document"] },
@@ -36,6 +37,7 @@ export function eventHref(e: TimelineEvent, customerId: string): string | undefi
   if (e.entity === "task" && e.entity_id) return `/attivita/${e.entity_id}`;
   if (e.entity === "appointment" && e.entity_id) return `/appuntamenti/${e.entity_id}`;
   if (e.entity === "follow_up" && e.entity_id) return `/followup/${e.entity_id}`;
+  if (e.entity === "email" && e.entity_id) return `/email/${e.entity_id}`;
   if (e.entity === "call") return `/chiamate?cliente=${customerId}`;
   if (e.entity === "document") return `/documenti`;
   return e.entity === "customer" ? undefined : `/clienti/${customerId}`;
