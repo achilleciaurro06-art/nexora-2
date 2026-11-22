@@ -36,7 +36,8 @@ export function CopilotDock({ canUse, canConfirm }: { canUse: boolean; canConfir
     return () => window.removeEventListener("keydown", k);
   }, [open]);
 
-  if (!canUse || pathname.startsWith("/copilot")) return null;
+  // nella dashboard e nella pagina Copilot la chat è già in pagina: niente pannello flottante
+  if (!canUse || pathname.startsWith("/copilot") || pathname === "/dashboard") return null;
   const page = parsePageContext(pathname);
   return (
     <>

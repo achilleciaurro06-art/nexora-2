@@ -10,7 +10,6 @@ import { ADMIN, OWNER, createAuthUser, sql } from "./helpers";
 test.use({ storageState: "e2e/.auth/owner.json" });
 test.describe.configure({ mode: "serial" });
 
-const first = (s: string) => s.split("\n")[0]!;
 const ORG = () => sql("select id from public.organizations where name = 'Azienda Prova S.r.l.'");
 const OWNER_ID = () => sql(`select id from auth.users where email = '${OWNER.email}'`);
 const V = "e1000000-0000-4000-8000-000000000001", B = "e1000000-0000-4000-8000-000000000002";
@@ -506,4 +505,25 @@ test("funzioni AI preesistenti: senza chiave reale (provider non Gemini) fallisc
   expect(used()).toBe(used0); // la prenotazione è stata rilasciata
   expect(sql(`select count(*) from public.ai_usage where organization_id = '${org}' and feature = 'email_analysis' and status = 'failed'`)).not.toBe("0");
   expect(sql(`select count(*) from public.ai_usage where organization_id = '${org}' and feature = 'email_analysis' and status = 'completed'`)).toBe("0");
+});
+
+test("dashboard: la chat del Copilot è in pagina (riquadro in alto), senza pannello flottante, e i pulsanti AI scrivono lì", async ({ page }) => {
+  await page.goto("/dashboard");
+  const box = page.getByTestId("dashboard-chat");
+  await expect(box).toBeVisible();
+  await expect(page.getByTestId("copilot-open")).toHaveCount(0); // niente doppione flottante
+  // è il primo blocco della dashboard, prima degli indicatori
+  const boxY = (await box.boundingBox())!.y, kpiY = (await page.getByText("Preventivi in attesa").first().boundingBox())!.y;
+  expect(boxY).toBeLessThan(kpiY);
+  await box.getByLabel("Domanda").fill("Cosa devo fare oggi?");
+  await box.getByRole("button", { name: "Invia" }).click();
+  await expect(box.getByTestId("assistant-message").last()).toContainText("get_my_day", { timeout: 30_000 });
+  // «Chiedi al Copilot» dell'assistente AI usa la stessa chat in pagina
+  await page.getByTestId("ai-section").getByRole("button", { name: "Chiedi al Copilot" }).click();
+  await expect(box.getByTestId("user-message").last()).toContainText("Come sta andando la mia attività?");
+  await expect(box.getByTestId("assistant-message").last()).toContainText("get_business_activity_summary", { timeout: 30_000 });
+  await expect(page.getByTestId("copilot-dock")).toHaveCount(0);
+  // nelle altre pagine resta il pannello flottante
+  await page.goto("/clienti");
+  await expect(page.getByTestId("copilot-open")).toBeVisible();
 });

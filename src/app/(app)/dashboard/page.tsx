@@ -18,6 +18,7 @@ import { loadSnapshot } from "@/modules/insights/snapshot";
 import { buildSummary } from "@/modules/insights/rules";
 import { ensureInsights, listInsights, markSeen } from "@/modules/insights/service";
 import { AiSection } from "@/modules/insights/ui/ai-section";
+import { DashboardChat } from "@/modules/copilot/ui/dashboard-chat";
 
 export const metadata = { title: "Dashboard" };
 
@@ -111,6 +112,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <>
       <PageHeader title="Dashboard" description={`Panoramica di ${ctx.org.name}`} />
+      {can(ctx.org.role, "ai:use") && <DashboardChat canConfirm={can(ctx.org.role, "data:write")} />}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         {kpis.map((k) => {
           const body = (
