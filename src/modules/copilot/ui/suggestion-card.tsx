@@ -33,7 +33,7 @@ export function SuggestionCard({ s }: { s: SuggestionView }) {
             <p><strong>Cliente:</strong> {s.draft.client || "— (da scegliere)"}</p>
             <p><strong>Oggetto:</strong> {s.draft.title || "—"}</p>
             <p><strong>Righe:</strong> {s.draft.items} · <strong>Totale:</strong> {s.draft.total ?? "—"}</p>
-            {s.draft.warnings > 0 && <p className="text-xs text-amber-600">{s.draft.warnings} controlli da verificare</p>}
+            {s.draft.warnings > 0 && <p className="text-xs text-warning">{s.draft.warnings} controlli da verificare</p>}
             {s.draft.duplicates > 0 && <p className="text-xs text-danger">Possibile duplicato</p>}
             <p className="text-xs text-muted">Prima di creare la bozza potrai controllare e correggere ogni dato.</p>
           </div>

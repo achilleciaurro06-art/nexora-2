@@ -41,7 +41,7 @@ export default async function CallsPage({ searchParams }: { searchParams: Promis
         <Select name="esito" defaultValue={sp.esito ?? ""} aria-label="Esito"><option value="">Tutti gli esiti</option>{CALL_OUTCOMES.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}</Select>
         <Select name="resp" defaultValue={sp.resp ?? ""} aria-label="Collaboratore"><option value="">Tutti i collaboratori</option><option value="me">Le mie</option>{members.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}</Select>
         <Select name="cliente" defaultValue={sp.cliente ?? ""} aria-label="Cliente"><option value="">Tutti i clienti</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
-        <Input name="da" type="date" defaultValue={sp.da} aria-label="Dal" /><div className="flex gap-2"><Input name="a" type="date" defaultValue={sp.a} aria-label="Al" /><button className={buttonVariants({ variant: "outline" })}>Filtra</button></div>
+        <Input name="da" type="date" defaultValue={sp.da} aria-label="Dal" /><div className="flex min-w-0 gap-2"><Input className="min-w-0" name="a" type="date" defaultValue={sp.a} aria-label="Al" /><button className={buttonVariants({ variant: "outline" })}>Filtra</button></div>
       </form>
       <Table>
         <thead><tr><th>Quando</th><th>Cliente</th><th>Direzione</th><th>Esito</th><th>Durata</th><th>Collaboratore</th><th>Note</th></tr></thead>

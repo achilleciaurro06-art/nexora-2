@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, Plus, Sparkles, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { AskCopilotButton } from "@/modules/copilot/ui/ask-button";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
-import { Alert } from "@/components/ui/card";
+import { Alert, Table } from "@/components/ui/card";
 import { formatEur, quoteTotals } from "@/lib/money";
 import type { ActionResult } from "@/lib/result";
 import { useFormAction } from "@/lib/use-form-action";
@@ -105,48 +107,118 @@ export function QuoteForm({ action, customers, initial, defaultVat = "22", catal
   };
   const err = (k: string) => (state && !state.ok ? state.fieldErrors?.[k]?.[0] : undefined);
 
+  // procedura guidata: tutti i campi restano nel form (sezioni nascoste, non smontate) quindi tornando indietro non si perde nulla
+  const STEPS = ["Cliente e dati", "Prodotti e servizi", "Condizioni", "Riepilogo"] as const;
+  const [step, setStep] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
+  /** Valida i passaggi dal corrente fino a quello di destinazione: si ferma sul primo campo non valido. */
+  const goTo = (target: number) => {
+    for (let st = step; st < target; st++) {
+      const box = formRef.current?.querySelector<HTMLElement>(`[data-step="${st}"]`);
+      const fields = box ? Array.from(box.querySelectorAll<HTMLInputElement>("input, select, textarea")) : [];
+      for (const f of fields) {
+        if (!f.checkValidity()) { setStep(st); setTimeout(() => f.reportValidity(), 0); return; }
+      }
+    }
+    setStep(Math.max(0, Math.min(STEPS.length - 1, target)));
+  };
+  const goNext = () => goTo(step + 1);
+  const totals = quoteTotals(payload);
+  const customerName = customers.find((c) => c.id === customerId)?.name;
+  const filled = lines.filter((l) => l.description.trim());
+
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form ref={formRef} onSubmit={onSubmit} onKeyDown={(e) => { if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT" && step < STEPS.length - 1) { e.preventDefault(); if (step === 0) goNext(); } }} className="space-y-6">
       <input type="hidden" name="items" value={JSON.stringify(payload)} />
-      <div className="grid max-w-4xl gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="customerId">Cliente *</Label>
-          <Select id="customerId" name="customerId" required value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-            <option value="" disabled>Seleziona…</option>
-            {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </Select>
-          {err("customerId") && <p className="mt-1 text-xs text-danger">{err("customerId")}</p>}
+
+      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Passaggi">
+        {STEPS.map((label, i) => (
+          <li key={label}>
+            <button type="button" onClick={() => goTo(i)} aria-current={i === step ? "step" : undefined}
+              className={cn("nx-t flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left text-sm", i === step ? "border-primary bg-primary/[0.06] font-medium" : "border-border bg-card text-muted hover:border-primary/40")}>
+              <span className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md text-xs font-semibold", i < step ? "bg-success text-white" : i === step ? "bg-primary text-white" : "bg-subtle text-muted")}>{i < step ? <Check className="size-3.5" /> : i + 1}</span>
+              <span className="truncate">{label}</span>
+            </button>
+          </li>
+        ))}
+      </ol>
+
+      <div data-step="0" hidden={step !== 0} className="rounded-lg border border-border bg-card p-5 shadow-card">
+        <div className="grid max-w-4xl gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="customerId">Cliente *</Label>
+            <Select id="customerId" name="customerId" required value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+              <option value="" disabled>Seleziona…</option>
+              {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </Select>
+            {err("customerId") && <p className="mt-1 text-xs text-danger">{err("customerId")}</p>}
+          </div>
+          <div><Label htmlFor="title">Oggetto</Label><Input id="title" name="title" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <div><Label htmlFor="issueDate">Data emissione</Label><Input id="issueDate" name="issueDate" type="date" defaultValue={initial?.issueDate ?? new Date().toISOString().slice(0, 10)} /></div>
+          <div><Label htmlFor="validUntil">Valido fino al</Label><Input id="validUntil" name="validUntil" type="date" defaultValue={initial?.validUntil ?? ""} /></div>
+          <div><Label htmlFor="followUpDate">Promemoria follow-up</Label><Input id="followUpDate" name="followUpDate" type="date" defaultValue={initial?.followUpDate ?? ""} /></div>
+          <CustomFieldsInputs defs={catalog?.fields ?? []} values={initial?.customValues} />
         </div>
-        <div><Label htmlFor="title">Oggetto</Label><Input id="title" name="title" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-        <div><Label htmlFor="issueDate">Data emissione</Label><Input id="issueDate" name="issueDate" type="date" defaultValue={initial?.issueDate ?? new Date().toISOString().slice(0, 10)} /></div>
-        <div><Label htmlFor="validUntil">Valido fino al</Label><Input id="validUntil" name="validUntil" type="date" defaultValue={initial?.validUntil ?? ""} /></div>
-        <div><Label htmlFor="followUpDate">Promemoria follow-up</Label><Input id="followUpDate" name="followUpDate" type="date" defaultValue={initial?.followUpDate ?? ""} /></div>
-        <CustomFieldsInputs defs={catalog?.fields ?? []} values={initial?.customValues} />
       </div>
 
-      {catalog && (catalog.products.length > 0 || catalog.templates.length > 0) && (
-        <div className="grid max-w-4xl gap-4 rounded-md border border-border p-3 sm:grid-cols-2" data-testid="catalog-tools">
-          {catalog.templates.length > 0 && (
-            <div><Label htmlFor="tpl">Applica un modello</Label>
-              <Select id="tpl" value="" onChange={(e) => applyTemplate(e.target.value)}><option value="">Scegli un modello…</option>{catalog.templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select></div>
-          )}
-          {catalog.products.length > 0 && (
-            <div><Label htmlFor="prod">Aggiungi dal catalogo</Label>
-              <Select id="prod" value="" onChange={(e) => addProduct(e.target.value)}><option value="">Scegli un prodotto o servizio…</option>
-                {catalog.products.map((p) => <option key={p.id} value={p.id}>{p.code ? `${p.code} · ` : ""}{p.name}</option>)}</Select></div>
-          )}
-          {hint && <p role="status" className="text-xs text-muted sm:col-span-2">{hint}</p>}
+      <div data-step="1" hidden={step !== 1} className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-card">
+        {catalog && (catalog.products.length > 0 || catalog.templates.length > 0) && (
+          <div className="grid max-w-4xl gap-4 rounded-md border border-line bg-subtle p-3 sm:grid-cols-2" data-testid="catalog-tools">
+            {catalog.templates.length > 0 && (
+              <div><Label htmlFor="tpl">Applica un modello</Label>
+                <Select id="tpl" value="" onChange={(e) => applyTemplate(e.target.value)}><option value="">Scegli un modello…</option>{catalog.templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select></div>
+            )}
+            {catalog.products.length > 0 && (
+              <div><Label htmlFor="prod">Aggiungi dal catalogo</Label>
+                <Select id="prod" value="" onChange={(e) => addProduct(e.target.value)}><option value="">Scegli un prodotto o servizio…</option>
+                  {catalog.products.map((p) => <option key={p.id} value={p.id}>{p.code ? `${p.code} · ` : ""}{p.name}</option>)}</Select></div>
+            )}
+            {hint && <p role="status" className="text-xs text-muted sm:col-span-2">{hint}</p>}
+          </div>
+        )}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/20 bg-primary/[0.04] px-3 py-2 text-sm">
+          <span className="flex items-center gap-2 text-muted"><Sparkles className="size-4 text-primary" />Descrivi la richiesta e il Copilot prepara una bozza con i prezzi del catalogo: la riveli e la approvi tu.</span>
+          <AskCopilotButton question={`Prepara una bozza di preventivo${customerName ? ` per ${customerName}` : ""}${title.trim() ? ` per «${title.trim()}»` : ""}, usando prodotti e prezzi del catalogo.`} label="Prepara con il Copilot" />
         </div>
-      )}
-
-      <QuoteLinesEditor lines={lines} onChange={setLines} defaultVat={defaultVat} />
-
-      <div className="grid max-w-4xl gap-4 sm:grid-cols-2">
-        <div><Label htmlFor="notes">Note</Label><Textarea id="notes" name="notes" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
-        <div><Label htmlFor="terms">Condizioni</Label><Textarea id="terms" name="terms" value={terms} onChange={(e) => setTerms(e.target.value)} /></div>
+        <QuoteLinesEditor lines={lines} onChange={setLines} defaultVat={defaultVat} />
       </div>
+
+      <div data-step="2" hidden={step !== 2} className="rounded-lg border border-border bg-card p-5 shadow-card">
+        <div className="grid max-w-4xl gap-4 sm:grid-cols-2">
+          <div><Label htmlFor="notes">Note</Label><Textarea id="notes" name="notes" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+          <div><Label htmlFor="terms">Condizioni</Label><Textarea id="terms" name="terms" value={terms} onChange={(e) => setTerms(e.target.value)} /></div>
+        </div>
+      </div>
+
+      <div data-step="3" hidden={step !== 3} className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-card" data-testid="quote-summary">
+        <h2 className="font-semibold">Riepilogo</h2>
+        <dl className="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
+          <div className="flex justify-between gap-3"><dt className="text-muted">Cliente</dt><dd className="font-medium">{customerName ?? "—"}</dd></div>
+          <div className="flex justify-between gap-3"><dt className="text-muted">Oggetto</dt><dd className="text-right font-medium">{title.trim() || "—"}</dd></div>
+        </dl>
+        <Table>
+          <thead><tr><th>Descrizione</th><th className="text-right">Qtà</th><th className="text-right">Prezzo</th><th className="text-right">Sconto</th><th className="text-right">IVA</th></tr></thead>
+          <tbody>
+            {filled.length === 0 && <tr><td colSpan={5} className="text-muted">Nessuna riga inserita.</td></tr>}
+            {filled.map((l, i) => <tr key={i}><td>{l.description}</td><td className="text-right">{l.quantity}</td><td className="text-right">{l.price} €</td><td className="text-right">{l.discount}%</td><td className="text-right">{l.vat}%</td></tr>)}
+          </tbody>
+        </Table>
+        <dl className="ml-auto grid max-w-xs grid-cols-2 gap-1 text-sm">
+          <dt className="text-muted">Imponibile</dt><dd className="text-right">{formatEur(totals.subtotalCents)}</dd>
+          <dt className="text-muted">IVA</dt><dd className="text-right">{formatEur(totals.vatCents)}</dd>
+          <dt className="font-semibold">Totale</dt><dd className="text-right text-lg font-semibold">{formatEur(totals.totalCents)}</dd>
+        </dl>
+        {(notes.trim() || terms.trim()) && <p className="whitespace-pre-wrap rounded-md bg-subtle p-3 text-xs text-muted">{[notes.trim() && `Note: ${notes.trim()}`, terms.trim() && `Condizioni: ${terms.trim()}`].filter(Boolean).join("\n")}</p>}
+        <p className="text-xs text-muted">Il numero viene assegnato automaticamente al salvataggio. Nulla viene inviato al cliente.</p>
+      </div>
+
       {state && !state.ok && <Alert>{state.error}</Alert>}
-      <Button disabled={pending}>{pending ? "Salvataggio…" : "Salva preventivo"}</Button>
+      <div className="flex items-center justify-between gap-3">
+        <Button type="button" variant="outline" onClick={() => setStep((x) => Math.max(0, x - 1))} disabled={step === 0}><ChevronLeft className="size-4" />Indietro</Button>
+        {step < STEPS.length - 1
+          ? <Button key="avanti" type="button" onClick={goNext}>Avanti<ChevronRight className="size-4" /></Button>
+          : <Button key="salva" disabled={pending}>{pending ? "Salvataggio…" : "Salva preventivo"}</Button>}
+      </div>
     </form>
   );
 }

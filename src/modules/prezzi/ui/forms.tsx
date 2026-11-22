@@ -18,7 +18,7 @@ export function AnalyzePricesButton({ quoteId, hasAnalysis }: { quoteId: string;
 
 export function PriceSuggestionForm({ suggestionId, quoteId, suggestedCents, editable }: { suggestionId: string; quoteId: string; suggestedCents: number; editable: boolean }) {
   const [state, action, pending] = useActionState(applyPriceSuggestionAction.bind(null, suggestionId), null);
-  if (state?.ok) return <p role="status" className="text-sm text-green-600">Prezzo aggiornato.</p>;
+  if (state?.ok) return <p role="status" className="text-sm text-success">Prezzo aggiornato.</p>;
   return (
     <form action={action} className="space-y-2">
       <Label htmlFor={`price-${suggestionId}`}>Prezzo unitario da applicare (al netto dello sconto)</Label>

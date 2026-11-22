@@ -3,7 +3,9 @@ import { requireContext } from "@/server/auth/session";
 import { createClient } from "@/server/supabase/server";
 import { can } from "@/server/auth/permissions";
 import { listQuotes } from "@/modules/preventivi/repository";
-import { PageHeader, Table } from "@/components/ui/card";
+import { FileText, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { EmptyState, PageHeader, Table } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { formatEur } from "@/lib/money";
 import { RemoveButton } from "@/components/ui/remove-button";
@@ -25,10 +27,12 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   return (
     <>
       <PageHeader title={terms.quote_plural}
-        actions={can(ctx.org.role, "data:write") ? <Link href="/preventivi/nuovo" className={buttonVariants()}>Nuovo {terms.quote_singular.toLowerCase()}</Link> : null} />
-      <nav className="mb-4 flex flex-wrap gap-2" aria-label="Filtro stato">
+        description={`${quotes.length} risultati · totale ${formatEur(quotes.reduce((n, q) => n + Number(q.total_cents), 0))}`}
+        actions={can(ctx.org.role, "data:write") ? <Link href="/preventivi/nuovo" className={buttonVariants()}><Plus className="size-4" />Nuovo {terms.quote_singular.toLowerCase()}</Link> : null} />
+      <nav className="mb-4 inline-flex flex-wrap gap-1 rounded-md border border-border bg-card p-1 shadow-card" aria-label="Filtro stato">
         {FILTERS.map((f) => (
-          <Link key={f || "all"} href={f ? `/preventivi?status=${f}` : "/preventivi"} className={buttonVariants({ variant: (status ?? "") === f ? "default" : "outline", size: "sm" })}>
+          <Link key={f || "all"} href={f ? `/preventivi?status=${f}` : "/preventivi"} aria-current={(status ?? "") === f ? "page" : undefined}
+            className={cn("nx-t rounded-sm px-3 py-1.5 text-sm", (status ?? "") === f ? "bg-primary text-white" : "text-muted hover:text-foreground")}>
             {f ? QUOTE_STATUS_LABEL[f] : "Tutti"}
           </Link>
         ))}
@@ -36,7 +40,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
       <Table>
         <thead><tr><th>Numero</th><th>Cliente</th><th>Oggetto</th><th>Data</th><th>Stato</th><th className="text-right">Totale</th>{canDelete && <th />}</tr></thead>
         <tbody>
-          {quotes.length === 0 && <tr><td colSpan={7} className="text-muted">Nessun preventivo.</td></tr>}
+          {quotes.length === 0 && <tr><td colSpan={7}><EmptyState icon={<FileText className="size-5" />} title="Nessun preventivo." description={status ? "Nessun preventivo con questo stato." : "Crea il primo preventivo per iniziare."} /></td></tr>}
           {quotes.map((q) => {
             const c = Array.isArray(q.customers) ? q.customers[0] : q.customers;
             return (

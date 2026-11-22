@@ -20,7 +20,7 @@ export function CreditsPanel({ quota, usage, scope }: { quota: QuotaView | null;
       <h2 className="mb-2 text-sm font-medium">Crediti AI del mese</h2>
       <p className="text-sm"><strong data-testid="credits-used">{fmt(quota.used)}</strong> / {fmt(quota.limit)} token <span className="text-muted">({pct}%)</span></p>
       <div className="mt-2 h-2 rounded-full bg-border" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Crediti AI utilizzati">
-        <div className={`h-2 rounded-full ${pct >= 100 ? "bg-danger" : pct >= 80 ? "bg-amber-500" : "bg-primary"}`} style={{ width: `${pct}%` }} />
+        <div className={`h-2 rounded-full ${pct >= 100 ? "bg-danger" : pct >= 80 ? "bg-warning" : "bg-primary"}`} style={{ width: `${pct}%` }} />
       </div>
       <p className={`mt-1 text-xs ${pct >= 100 ? "text-danger" : "text-muted"}`} data-testid="credits-state">
         {pct >= 100 ? "Crediti esauriti: le richieste AI sono sospese fino al prossimo mese o all'aumento del limite da parte dell'amministratore." : `Crediti ${state}: restano ${fmt(left)} token. Il consumo si azzera ogni mese.`}

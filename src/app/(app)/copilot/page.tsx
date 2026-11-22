@@ -8,7 +8,10 @@ import type { ProposalView } from "@/modules/copilot/ui/proposal-card";
 import { CreditsPanel, type UsageView } from "@/modules/copilot/ui/credits";
 import { suggestedQuestions } from "@/modules/copilot/page-context";
 import { PROPOSAL_LABEL, proposalDetails } from "@/modules/copilot/proposals";
-import { Card, PageHeader } from "@/components/ui/card";
+import { Sparkles } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { DigitalTexture } from "@/components/brand/digital-texture";
+import { ConversationList, CopilotWorkspace } from "@/modules/copilot/ui/workspace";
 
 export const metadata = { title: "Copilot AI" };
 export const maxDuration = 60;
@@ -42,31 +45,45 @@ export default async function CopilotPage({ searchParams }: { searchParams: Prom
   }));
   const chatMessages: ChatMessage[] = (messages ?? []).map((m) => ({ id: m.id as string, role: m.role as "user" | "assistant", content: m.content as string, sources: (m.sources ?? []) as ChatMessage["sources"] }));
 
+  // fonti realmente consultate nella conversazione (dai messaggi salvati): nessun dato aggiunto
+  const seen = new Set<string>(); const sourcesAll: { label: string; href?: string }[] = [];
+  for (const m of chatMessages) for (const x of m.sources ?? []) { const k = `${x.label}|${x.href ?? ""}`; if (!seen.has(k)) { seen.add(k); sourcesAll.push(x); } }
+
   return (
     <>
-      <PageHeader title="Copilot AI" description="L'assistente che conosce la tua azienda: legge i dati reali con gli strumenti autorizzati e prepara azioni da confermare." />
-      <div className="grid gap-4 lg:grid-cols-[220px_1fr_320px]">
-        <Card className="h-fit">
-          <h2 className="mb-2 text-sm font-medium">Conversazioni</h2>
-          <ul className="space-y-1 text-sm">
-            <li><Link className="text-primary hover:underline" href="/copilot?c=" data-testid="new-conversation">+ Nuova</Link></li>
-            {(convs ?? []).map((v) => <li key={v.id as string} className="truncate"><Link className={`hover:underline ${v.id === active ? "font-medium" : "text-muted"}`} href={`/copilot?c=${v.id}`}>{(v.title as string) || "Senza titolo"}</Link></li>)}
-          </ul>
-        </Card>
-        <Card>
-          <ChatPanel key={active ?? "new"} conversationId={active} initialMessages={chatMessages} initialProposals={proposals} canUse={canAi} canConfirm={canDecide} path="/copilot" suggestions={suggestedQuestions({ page: "generic" })} />
-        </Card>
-        <div className="space-y-4">
-          <CreditsPanel quota={quota ? { limit: Number(quota.monthly_token_limit), used: Number(quota.tokens_used), inputPrice: quota.input_price_micro_per_mtok === null ? null : Number(quota.input_price_micro_per_mtok), outputPrice: quota.output_price_micro_per_mtok === null ? null : Number(quota.output_price_micro_per_mtok) } : null}
-            usage={(usage ?? []) as UsageView[]} scope={isAdmin ? "organization" : "mine"} />
-          {(suggestions ?? []).length > 0 && (
-            <Card className="h-fit">
-              <h2 className="mb-2 text-sm font-medium">Suggerimenti da approvare</h2>
-              <SuggestionList suggestions={(suggestions ?? []) as SuggestionRow[]} canDecide={canDecide} />
-            </Card>
-          )}
+      <header className="nx-surface-dark relative -mx-4 -mt-4 mb-5 overflow-hidden px-5 py-5 md:-mx-8 md:-mt-8 md:px-8">
+        <DigitalTexture intensity="medium" />
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky"><Sparkles className="size-3.5" />NEXORA Copilot</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">Copilot AI</h1>
+            <p className="mt-0.5 max-w-2xl text-sm text-slate-300">L&apos;assistente che conosce la tua azienda: legge i dati reali con gli strumenti autorizzati e prepara azioni da confermare.</p>
+          </div>
         </div>
-      </div>
+      </header>
+      <CopilotWorkspace
+        left={<ConversationList items={(convs ?? []).map((v) => ({ id: v.id as string, title: (v.title as string) || "" }))} activeId={active} />}
+        right={
+          <>
+            <Card className="p-4">
+              <h2 className="mb-2 text-sm font-semibold">Contesto della conversazione</h2>
+              {sourcesAll.length === 0 ? <p className="text-sm text-muted">Quando il Copilot consulta i tuoi dati, qui compaiono le fonti realmente utilizzate.</p> : (
+                <ul className="space-y-1.5 text-sm" data-testid="context-sources">{sourcesAll.map((x, i) => <li key={i}>{x.href ? <Link className="text-primary hover:underline" href={x.href}>{x.label}</Link> : x.label}</li>)}</ul>
+              )}
+            </Card>
+            <CreditsPanel quota={quota ? { limit: Number(quota.monthly_token_limit), used: Number(quota.tokens_used), inputPrice: quota.input_price_micro_per_mtok === null ? null : Number(quota.input_price_micro_per_mtok), outputPrice: quota.output_price_micro_per_mtok === null ? null : Number(quota.output_price_micro_per_mtok) } : null}
+              usage={(usage ?? []) as UsageView[]} scope={isAdmin ? "organization" : "mine"} />
+            {(suggestions ?? []).length > 0 && (
+              <Card className="h-fit p-4">
+                <h2 className="mb-2 text-sm font-semibold">Suggerimenti da approvare</h2>
+                <SuggestionList suggestions={(suggestions ?? []) as SuggestionRow[]} canDecide={canDecide} />
+              </Card>
+            )}
+          </>
+        }
+      >
+        <ChatPanel key={active ?? "new"} conversationId={active} initialMessages={chatMessages} initialProposals={proposals} canUse={canAi} canConfirm={canDecide} path="/copilot" suggestions={suggestedQuestions({ page: "generic" })} modes />
+      </CopilotWorkspace>
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { quoteStep } from "./helpers";
 
 test.use({ storageState: "e2e/.auth/owner.json" });
 test.describe.configure({ mode: "serial" });
@@ -57,6 +58,8 @@ test("preventivi: IVA e validità predefinite applicate ai nuovi preventivi", as
   await expect(page.getByLabel("IVA")).toHaveValue("10");
   const expected = new Date(Date.now() + 15 * 86_400_000).toISOString().slice(0, 10);
   await expect(page.getByLabel("Valido fino al")).toHaveValue(expected);
+  await page.getByLabel("Cliente *").selectOption({ label: "Rossi Costruzioni S.r.l." });
+  await quoteStep(page, "Prodotti e servizi");
   await page.getByRole("button", { name: "Aggiungi riga" }).click();
   await expect(page.getByLabel("IVA").nth(1)).toHaveValue("10");
 

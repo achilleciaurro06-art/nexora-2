@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { sql } from "./helpers";
+import { quoteStep, sql } from "./helpers";
 
 test.use({ storageState: "e2e/.auth/owner.json" });
 test.describe.configure({ mode: "serial" });
@@ -131,16 +131,20 @@ test("listino: prezzi dedicati assegnati a un cliente", async ({ page }) => {
 test("preventivo: prodotto dal catalogo con prezzo di listino, modello, campi personalizzati", async ({ page }) => {
   await page.goto("/preventivi/nuovo");
   await page.getByLabel("Cliente *").selectOption({ label: "Verdi Serramenti Srl" });
+  await quoteStep(page, "Prodotti e servizi");
   await page.getByLabel("Aggiungi dal catalogo").selectOption({ label: "SER-01 · Serramento PVC 120x140" });
   await expect(page.getByRole("status")).toContainText("prezzo del listino Rivenditori");
   await expect(page.getByLabel("Prezzo").first()).toHaveValue("420.00");
   page.once("dialog", (d) => d.accept()); // le righe presenti verrebbero sostituite: chiede conferma
   await page.getByLabel("Applica un modello").selectOption({ label: "Sostituzione serramenti" });
-  await expect(page.getByLabel("Oggetto")).toHaveValue("Fornitura e posa di serramenti");
-  await expect(page.getByLabel("Condizioni")).toHaveValue(/Pagamento 50% all.ordine/); // le condizioni già presenti (predefinite aziendali) non vengono sovrascritte
   await expect(page.getByLabel("Descrizione")).toHaveCount(3);
+  await quoteStep(page, "Condizioni");
+  await expect(page.getByLabel("Condizioni", { exact: true })).toHaveValue(/Pagamento 50% all.ordine/); // le condizioni già presenti (predefinite aziendali) non vengono sovrascritte
+  await quoteStep(page, "Cliente e dati");
+  await expect(page.getByLabel("Oggetto")).toHaveValue("Fornitura e posa di serramenti");
   await page.getByLabel("Indirizzo del cantiere").fill("Via Po 12, Torino");
   await page.getByLabel("Materiale").selectOption("PVC");
+  await quoteStep(page, "Riepilogo");
   await page.getByRole("button", { name: "Salva preventivo" }).click();
   await page.waitForURL(/\/preventivi\/[0-9a-f-]{36}$/);
   await expect(page.getByText("Via Po 12, Torino")).toBeVisible();
@@ -154,6 +158,7 @@ test("preventivo: prodotto dal catalogo con prezzo di listino, modello, campi pe
 test("senza listino vale il prezzo base", async ({ page }) => {
   await page.goto("/preventivi/nuovo");
   await page.getByLabel("Cliente *").selectOption({ label: "Rossi Costruzioni S.r.l." });
+  await quoteStep(page, "Prodotti e servizi");
   await page.getByLabel("Aggiungi dal catalogo").selectOption({ label: "SER-01 · Serramento PVC 120x140" });
   await expect(page.getByRole("status")).toContainText("prezzo base");
   await expect(page.getByLabel("Prezzo").first()).toHaveValue("500.00");

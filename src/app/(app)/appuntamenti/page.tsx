@@ -16,6 +16,52 @@ export const metadata = { title: "Appuntamenti" };
 type Row = { id: string; title: string; starts_at: string; ends_at: string; status: string; location: string | null; assignee_id: string | null; customer_id: string | null; customers: { name: string } | { name: string }[] | null };
 const WD = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 
+
+const mins = (iso: string) => { const [h, m] = utcToZonedParts(iso).time.split(":").map(Number) as [number, number]; return h * 60 + m; };
+
+/** Griglia oraria (settimana/giorno): puramente presentazionale, usa gli stessi appuntamenti già caricati. */
+function TimeGrid({ days, byDay, today, label, cname, href }: { days: string[]; byDay: Map<string, Row[]>; today: string; label: (d: string) => string; cname: (a: Row) => string | undefined; href: (d: string) => string }) {
+  const all = days.flatMap((d) => byDay.get(d) ?? []);
+  const startH = Math.min(8, ...all.map((a) => Math.floor(mins(a.starts_at) / 60)));
+  const endH = Math.max(19, ...all.map((a) => Math.min(24, Math.ceil(mins(a.ends_at) / 60) || 24)));
+  const H = 52; // px per ora
+  const hours = Array.from({ length: endH - startH }, (_, i) => startH + i);
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-[44rem]" role="grid" aria-label={days.length === 1 ? "Calendario giornaliero" : "Calendario settimanale"}>
+        <div className="grid border-b border-border" style={{ gridTemplateColumns: `3.25rem repeat(${days.length}, minmax(0, 1fr))` }}>
+          <div />
+          {days.map((d) => <Link key={d} href={href(d)} className={cn("nx-t border-l border-line px-2 py-2 text-center text-xs font-medium hover:bg-primary/[0.04]", d === today && "text-primary")}>{label(d)}</Link>)}
+        </div>
+        <div className="grid" style={{ gridTemplateColumns: `3.25rem repeat(${days.length}, minmax(0, 1fr))` }}>
+          <div>{hours.map((h) => <div key={h} style={{ height: H }} className="pr-2 text-right text-[11px] text-muted"><span className="relative -top-2">{String(h).padStart(2, "0")}:00</span></div>)}</div>
+          {days.map((d) => {
+            const items = [...(byDay.get(d) ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+            // corsie semplici per gli appuntamenti sovrapposti
+            const lanes: number[] = []; const placed = items.map((a) => { let l = lanes.findIndex((end) => end <= mins(a.starts_at)); if (l < 0) { l = lanes.length; lanes.push(0); } lanes[l] = mins(a.ends_at); return { a, l }; });
+            const n = Math.max(1, lanes.length);
+            return (
+              <div key={d} role="gridcell" data-date={d} className={cn("relative border-l border-line", d === today && "bg-primary/[0.035]")} style={{ height: hours.length * H }}>
+                {hours.map((h, i) => <div key={h} aria-hidden className="absolute inset-x-0 border-t border-line" style={{ top: i * H }} />)}
+                {placed.map(({ a, l }) => {
+                  const top = ((mins(a.starts_at) - startH * 60) / 60) * H, hgt = Math.max(24, ((mins(a.ends_at) - mins(a.starts_at)) / 60) * H - 2);
+                  return (
+                    <Link key={a.id} href={`/appuntamenti/${a.id}`} data-testid="appointment" data-status={a.status}
+                      className={cn("nx-t absolute overflow-hidden rounded-sm border-l-[3px] border-primary bg-primary/12 px-1.5 py-1 text-[11px] leading-tight hover:bg-primary/20", a.status === "completed" && "opacity-60 line-through")}
+                      style={{ top, height: hgt, left: `calc(${(l / n) * 100}% + 2px)`, width: `calc(${100 / n}% - 4px)` }}>
+                      <span className="font-semibold">{fmtTime(a.starts_at)}–{fmtTime(a.ends_at)}</span> {a.title}{cname(a) ? <span className="block truncate text-muted">{cname(a)}</span> : null}
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default async function AppointmentsPage({ searchParams }: { searchParams: Promise<{ vista?: string; data?: string; resp?: string; quando?: string }> }) {
   const sp = await searchParams;
   const ctx = await requireContext();
@@ -122,25 +168,12 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
               })}
             </div></div>
           )}
-          {view === "settimana" && (
-            <div className="grid gap-2 md:grid-cols-7" role="grid" aria-label="Calendario settimanale">
-              {weekDays(date).map((d, i) => (
-                <div key={d} role="gridcell" data-date={d} className={cn("min-h-28 space-y-1 rounded border border-border p-2", d === today && "ring-2 ring-primary")}>
-                  <Link href={href({ vista: "giorno", data: d })} className="text-xs font-medium hover:underline">{WD[i]} {+d.slice(8)}</Link>
-                  {(byDay.get(d) ?? []).map((a) => <Chip key={a.id} a={a} full />)}
-                </div>
-              ))}
-            </div>
-          )}
+          {view === "settimana" && <TimeGrid days={weekDays(date)} byDay={byDay} today={today} cname={cname} label={(d) => `${WD[weekDays(date).indexOf(d)]} ${+d.slice(8)}`} href={(d) => href({ vista: "giorno", data: d })} />}
           {view === "giorno" && (
-            <ul className="space-y-2 text-sm" data-date={date}>
-              {(byDay.get(date) ?? []).map((a) => (
-                <li key={a.id} className="rounded border border-border p-3">
-                  <Chip a={a} full />
-                  <p className="mt-1 text-xs text-muted">{a.location ?? "Nessun luogo indicato"} · {APPOINTMENT_STATUS_LABEL[a.status as keyof typeof APPOINTMENT_STATUS_LABEL]}</p>
-                </li>
-              ))}
-            </ul>
+            <>
+              <TimeGrid days={[date]} byDay={byDay} today={today} cname={cname} label={(d) => titleFor("giorno", d)} href={(d) => href({ vista: "giorno", data: d })} />
+              <ul className="sr-only" data-date={date}>{(byDay.get(date) ?? []).map((a) => <li key={a.id}>{fmtTime(a.starts_at)} {a.title} · {a.location ?? "Nessun luogo indicato"} · {APPOINTMENT_STATUS_LABEL[a.status as keyof typeof APPOINTMENT_STATUS_LABEL]}</li>)}</ul>
+            </>
           )}
         </Card>
       )}

@@ -13,6 +13,8 @@ import { RemoveButton } from "@/components/ui/remove-button";
 import { dayRangeUtc, fmtDate, fmtDateTime, fmtTime, todayIn } from "@/lib/datetime";
 import { isUuid } from "@/lib/ids";
 import { cn } from "@/lib/utils";
+import { Avatar } from "@/components/ui/avatar";
+import { Mail } from "lucide-react";
 
 type SP = { cartella?: string; q?: string; casella?: string; cliente?: string; nonletti?: string; collegamento?: string; da?: string; a?: string; n?: string };
 const whenLabel = (iso: string) => (todayIn(new Date(iso)) === todayIn(new Date()) ? fmtTime(iso) : fmtDate(iso));
@@ -29,7 +31,7 @@ export default async function EmailPage({ searchParams }: { searchParams: Promis
     const { data: drafts } = await db.from("email_drafts").select("id, subject, to_addrs, updated_at, account_id").eq("organization_id", orgId).eq("author_id", ctx.userId).order("updated_at", { ascending: false }).limit(100);
     return (
       <Card className="p-0">
-        <ul className="divide-y divide-border text-sm" data-testid="drafts">
+        <ul className="divide-y divide-line text-sm" data-testid="drafts">
           {(drafts ?? []).length === 0 && <li className="p-4 text-muted">Nessuna bozza. Le bozze si salvano da sole mentre scrivi e sono visibili solo a te.</li>}
           {(drafts ?? []).map((d) => (
             <li key={d.id as string} className="flex items-center justify-between gap-3 p-3">
@@ -69,13 +71,14 @@ export default async function EmailPage({ searchParams }: { searchParams: Promis
         <div className="flex items-center gap-2 lg:col-span-3"><button className={buttonVariants({ variant: "outline", size: "sm" })}>Applica</button>{filtered && <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href={`/email?cartella=${folder}`}>Azzera</Link>}<SyncButton auto={stale} /></div>
       </form>
       <Card className="p-0">
-        <ul className="divide-y divide-border" data-testid="threads">
-          {threads.length === 0 && <li className="p-6 text-sm text-muted">{filtered ? "Nessuna conversazione con questi filtri." : folder === "arrivo" ? "La posta in arrivo è vuota." : folder === "inviate" ? "Nessuna email inviata." : "Nessuna email."}</li>}
+        <ul className="divide-y divide-line" data-testid="threads">
+          {threads.length === 0 && <li className="p-8 text-center text-sm text-muted"><Mail className="mx-auto mb-2 size-6 text-primary/60" />{filtered ? "Nessuna conversazione con questi filtri." : folder === "arrivo" ? "La posta in arrivo è vuota." : folder === "inviate" ? "Nessuna email inviata." : "Nessuna email."}</li>}
           {threads.map((t) => {
             const unread = t.unread_count > 0;
             const l = t.last;
             return (
-              <li key={t.id} data-unread={unread || undefined} className={cn("flex items-start gap-3 p-3 hover:bg-border/30", unread && "bg-primary/5")}>
+              <li key={t.id} data-unread={unread || undefined} className={cn("nx-t flex items-start gap-3 border-l-[3px] p-3 hover:bg-primary/[0.04]", unread ? "border-primary bg-primary/[0.04]" : "border-transparent")}>
+                <Avatar name={l ? (l.direction === "inbound" ? l.from_name || l.from_address : "Tu") : "?"} size={34} className="mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <Link href={`/email/${t.id}`} className="block">
                     <p className="flex items-center gap-2 truncate text-sm">
@@ -89,7 +92,7 @@ export default async function EmailPage({ searchParams }: { searchParams: Promis
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-muted">
                     <span>{accName.get(t.account_id) ?? ""}</span>
                     {t.customers && t.customer_id && <Link className="text-primary hover:underline" href={`/clienti/${t.customer_id}`}>{t.customers.name}{t.customers.archived_at ? " (archiviato)" : ""}</Link>}
-                    {t.link_status === "suggested" && <span className="text-amber-700 dark:text-amber-400">Cliente da confermare</span>}
+                    {t.link_status === "suggested" && <span className="text-warning">Cliente da confermare</span>}
                     {t.link_status === "none" && <span>Non collegata a un cliente</span>}
                   </p>
                 </div>

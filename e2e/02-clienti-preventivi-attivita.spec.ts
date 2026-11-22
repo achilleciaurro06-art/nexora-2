@@ -1,3 +1,4 @@
+import { quoteStep } from "./helpers";
 import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
@@ -58,13 +59,16 @@ test("preventivo: righe, sconto, IVA, totali e numerazione", async ({ page }) =>
   const id = customerUrl.split("/").pop();
   await page.goto(`/preventivi/nuovo?cliente=${id}`);
   await page.getByLabel("Oggetto").fill("Fornitura serramenti");
+  await quoteStep(page, "Prodotti e servizi");
   const row = page.locator("div.grid").filter({ has: page.getByLabel("Descrizione") }).first();
   await row.getByLabel("Descrizione").fill("Serramento in PVC 120x140");
   await row.getByLabel("Quantità").fill("2");
   await row.getByLabel("Prezzo").fill("500");
   await row.getByLabel("Sconto").fill("10");
   await row.getByLabel("IVA").fill("22");
-  await expect(page.getByText(/1\.098,00/)).toBeVisible(); // (2 x 500) - 10% = 900 + IVA 198
+  await expect(page.getByText(/1\.098,00/).first()).toBeVisible(); // (2 x 500) - 10% = 900 + IVA 198
+  await quoteStep(page, "Riepilogo");
+  await expect(page.getByTestId("quote-summary").getByText(/1\.098,00/)).toBeVisible();
   await page.getByRole("button", { name: "Salva preventivo" }).click();
   await expect(page).toHaveURL(/\/preventivi\/[0-9a-f-]{36}$/);
   quoteUrl = page.url();

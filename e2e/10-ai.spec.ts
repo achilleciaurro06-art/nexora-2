@@ -118,11 +118,15 @@ test("insight: ignora/completa restano tali, il refresh aggiorna senza duplicare
   await expect.poll(() => sql(`select (expires_at <= now())::text from public.ai_insights where organization_id = '${ORG()}' and rule = 'invoices_unpaid'`)).toBe("true");
   await page.reload();
   await expect(page.getByTestId("ai-attention").locator('[data-rule="invoices_unpaid"]')).toHaveCount(0);
-  // la condizione ritorna → l'insight chiuso torna «nuovo»
+  // la condizione ritorna → l'insight chiuso torna attivo
   sql(`update public.quote_billings set payment_status = 'unpaid', paid_at = null where reference = 'FT-AI-1'`);
   sql(`update public.ai_insight_state set last_run_at = 'epoch' where organization_id = '${ORG()}'`);
   await page.getByTestId("insights-refresh").click();
-  await expect.poll(() => sql(`select status from public.ai_insights where organization_id = '${ORG()}' and rule = 'invoices_unpaid'`)).toBe("new");
+  // la condizione è tornata: l'insight non è più scaduto ed è di nuovo VISIBILE in dashboard. Lo stato interno new/seen non si asserisce qui:
+  // «nuovo» dura solo fino al render che lo mostra (markSeen), coperto dai test unitari tests/insights-markseen.test.ts.
+  await expect.poll(() => sql(`select (expires_at > now())::text from public.ai_insights where organization_id = '${ORG()}' and rule = 'invoices_unpaid'`)).toBe("true");
+  await page.reload();
+  await expect(page.getByTestId("ai-attention").locator('[data-rule="invoices_unpaid"]')).toBeVisible();
 });
 
 test("Copilot: domande su fatture, preventivi, attività con dati REALI, fonti, conversazione persistente e crediti contabilizzati", async ({ page }) => {
@@ -512,9 +516,9 @@ test("dashboard: la chat del Copilot è in pagina (riquadro in alto), senza pann
   const box = page.getByTestId("dashboard-chat");
   await expect(box).toBeVisible();
   await expect(page.getByTestId("copilot-open")).toHaveCount(0); // niente doppione flottante
-  // è il primo blocco della dashboard, prima degli indicatori
-  const boxY = (await box.boundingBox())!.y, kpiY = (await page.getByText("Preventivi in attesa").first().boundingBox())!.y;
-  expect(boxY).toBeLessThan(kpiY);
+  // la chat sta nel pannello «NEXORA Intelligence», nell'area centrale, sotto l'intestazione e gli indicatori
+  await expect(page.getByRole("complementary", { name: "NEXORA Intelligence" }).getByTestId("dashboard-chat")).toBeVisible();
+  expect((await page.getByTestId("dash-header").boundingBox())!.y).toBeLessThan((await box.boundingBox())!.y);
   await box.getByLabel("Domanda").fill("Cosa devo fare oggi?");
   await box.getByRole("button", { name: "Invia" }).click();
   await expect(box.getByTestId("assistant-message").last()).toContainText("get_my_day", { timeout: 30_000 });

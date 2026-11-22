@@ -42,7 +42,7 @@ export function CopilotDock({ canUse, canConfirm }: { canUse: boolean; canConfir
   return (
     <>
       {!open && (
-        <button type="button" onClick={() => setOpen(true)} className="no-print fixed bottom-4 right-4 z-40 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground shadow-lg hover:opacity-90" aria-label="Apri il Copilot" data-testid="copilot-open">
+        <button type="button" onClick={() => setOpen(true)} className="no-print fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 md:bottom-4 z-40 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground shadow-lg hover:opacity-90" aria-label="Apri il Copilot" data-testid="copilot-open">
           Copilot
         </button>
       )}

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { sql } from "./helpers";
+import { quoteStep, sql } from "./helpers";
 
 test.use({ storageState: "e2e/.auth/owner.json" });
 test.describe.configure({ mode: "serial" });
@@ -75,11 +75,13 @@ test("storico modifiche: ogni salvataggio con differenze produce una revisione l
   await expect(card.getByText("Preventivo creato")).toBeVisible();
   await page.goto(`${url}/modifica`);
   await page.getByLabel("Oggetto").fill("Oggetto cambiato");
+  await quoteStep(page, "Riepilogo");
   await page.getByRole("button", { name: "Salva preventivo" }).click();
   await page.waitForURL(url);
   await expect(page.getByTestId("revisions-card").getByText(/Modificato:.*oggetto/)).toBeVisible();
   const before = await page.getByTestId("revisions-card").locator("li").count();
   await page.goto(`${url}/modifica`);
+  await quoteStep(page, "Riepilogo");
   await page.getByRole("button", { name: "Salva preventivo" }).click(); // nessuna differenza
   await page.waitForURL(url);
   await expect(page.getByTestId("revisions-card").locator("li")).toHaveCount(before);

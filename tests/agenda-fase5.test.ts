@@ -155,7 +155,11 @@ describe("calendario", () => {
     expect(titleFor("giorno", "2026-05-10")).toBe("10 maggio 2026");
   });
   it("parametri non validi tornano ai valori predefiniti", () => {
-    expect(parseCalView("boh")).toBe("mese"); expect(CAL_VIEWS.map((v) => v.key)).toEqual(["mese", "settimana", "giorno"]);
+    // la vista predefinita è la settimana (scelta di progetto); le altre viste restano raggiungibili
+    expect(parseCalView("boh")).toBe("settimana"); expect(parseCalView(undefined)).toBe("settimana"); expect(parseCalView("")).toBe("settimana");
+    expect(parseCalView("mese")).toBe("mese"); expect(parseCalView("settimana")).toBe("settimana"); expect(parseCalView("giorno")).toBe("giorno");
+    expect(parseCalView("elenco")).toBe("settimana"); // «elenco» non è una vista del calendario (è gestita dalla pagina)
+    expect(CAL_VIEWS.map((v) => v.key)).toEqual(["mese", "settimana", "giorno"]);
     expect(isDateStr("2026-02-30")).toBe(false); expect(isDateStr("2026-05-10")).toBe(true); expect(isDateStr("10/05/2026")).toBe(false); expect(isDateStr(undefined)).toBe(false);
   });
 });
