@@ -16,8 +16,8 @@ import { RemoveButton } from "@/components/ui/remove-button";
 import { fmtDateTime } from "@/lib/datetime";
 
 const STATUS: Record<string, { label: string; cls: string }> = {
-  connected: { label: "Collegata", cls: "border-green-400 text-green-700 dark:text-green-300" }, error: { label: "Errore", cls: "border-danger text-danger" },
-  needs_reauth: { label: "Da ricollegare", cls: "border-amber-500 text-amber-700 dark:text-amber-300" }, disconnected: { label: "Disconnessa", cls: "text-muted" },
+  connected: { label: "Collegata", cls: "border-success text-success" }, error: { label: "Errore", cls: "border-danger text-danger" },
+  needs_reauth: { label: "Da ricollegare", cls: "border-warning text-warning" }, disconnected: { label: "Disconnessa", cls: "text-muted" },
 };
 const ERR: Record<string, string> = { "non-configurato": "Il collegamento non è ancora configurato su questo ambiente.", permessi: "Non hai i permessi per collegare caselle.", state: "Richiesta di collegamento scaduta o non valida: riprova.", negato: "Autorizzazione negata o annullata.", provider: "Provider non supportato." };
 

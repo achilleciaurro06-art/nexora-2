@@ -5,9 +5,9 @@ import { AnalyzePricesButton, PriceSuggestionForm } from "./forms";
 import type { ItemAnalysis, Verdict } from "../stats";
 
 const VERDICT: Record<Verdict, { label: string; cls: string }> = {
-  low: { label: "Prezzo basso", cls: "border-amber-500 text-amber-600" },
+  low: { label: "Prezzo basso", cls: "border-warning text-warning" },
   high: { label: "Prezzo alto", cls: "border-danger text-danger" },
-  ok: { label: "In linea", cls: "border-green-600 text-green-600" },
+  ok: { label: "In linea", cls: "border-success text-success" },
   insufficient_data: { label: "Dati insufficienti", cls: "text-muted" },
 };
 

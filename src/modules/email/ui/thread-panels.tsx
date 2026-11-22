@@ -83,7 +83,7 @@ export function SuggestionList({ threadId, candidates }: { threadId: string; can
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
   return (
-    <div className="space-y-2 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm dark:bg-amber-950/30" data-testid="link-suggestions">
+    <div className="space-y-2 rounded-md border border-warning bg-warning/10 p-3 text-sm" data-testid="link-suggestions">
       <p className="font-medium">A quale cliente appartiene questa conversazione?</p>
       <p className="text-xs text-muted">L&apos;indirizzo corrisponde a più clienti: scegli tu, non collego nulla in automatico.</p>
       <ul className="space-y-1">
@@ -144,7 +144,7 @@ export function SaveAttachmentButton({ id, name }: { id: string; name: string })
   return (
     <form onSubmit={onSubmit} className="inline-flex items-center gap-2">
       <Button size="sm" variant="ghost" disabled={pending} aria-label={`Salva ${name} nei documenti`}>Salva nei documenti</Button>
-      {state?.ok && <span role="status" className="text-xs text-green-700 dark:text-green-400">Salvato</span>}
+      {state?.ok && <span role="status" className="text-xs text-success">Salvato</span>}
       {state && !state.ok && <span role="alert" className="text-xs text-danger">{state.error}</span>}
     </form>
   );

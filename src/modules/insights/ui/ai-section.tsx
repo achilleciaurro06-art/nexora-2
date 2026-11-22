@@ -64,7 +64,7 @@ export function AiSection({ summary, insights, seenBefore, canWrite, canUseAi }:
         <Card data-testid="ai-summary">
           <h3 className="mb-2 text-sm font-medium">Sintesi dell&apos;attività</h3>
           {summary.lines.length === 0 ? <p className="text-sm text-muted">Non ci sono ancora dati sufficienti per una sintesi: appena registri preventivi, follow-up e fatturato compariranno qui.</p> : (
-            <ul className="space-y-1.5 text-sm">{summary.lines.map((l, k) => <li key={k} className="flex gap-2"><span aria-hidden className={l.tone === "bad" ? "text-danger" : l.tone === "good" ? "text-green-600" : "text-muted"}>●</span><span>{l.href ? <Link href={l.href} className="hover:underline">{l.text}</Link> : l.text}</span></li>)}</ul>
+            <ul className="space-y-1.5 text-sm">{summary.lines.map((l, k) => <li key={k} className="flex gap-2"><span aria-hidden className={l.tone === "bad" ? "text-danger" : l.tone === "good" ? "text-success" : "text-muted"}>●</span><span>{l.href ? <Link href={l.href} className="hover:underline">{l.text}</Link> : l.text}</span></li>)}</ul>
           )}
           <p className="mt-3 text-xs text-muted">Numeri calcolati sui dati registrati in NEXORA. Il fatturato è quello registrato dall&apos;utente, non un dato fiscale.</p>
         </Card>

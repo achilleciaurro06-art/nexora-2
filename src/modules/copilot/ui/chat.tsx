@@ -12,6 +12,13 @@ export type Source = { label: string; href?: string };
 export type ChatMessage = { id: string; role: "user" | "assistant"; content: string; sources?: Source[] };
 
 const SLOW_AFTER_S = 25;
+/** Le «modalità» sono solo scorciatoie che precompilano la domanda: l'assistente è sempre lo stesso. */
+const MODES = [
+  { label: "Chat", lead: "", hint: "Domanda libera" },
+  { label: "Analisi", lead: "Analizza i dati e dimmi: ", hint: "Precompila una richiesta di analisi" },
+  { label: "Creazione", lead: "Prepara una bozza di ", hint: "Precompila una richiesta di creazione (resta una proposta da confermare)" },
+  { label: "Operatività", lead: "Prepara le azioni necessarie per: ", hint: "Precompila una richiesta operativa (le azioni richiedono la tua conferma)" },
+];
 
 type DoneEvent = { type: "done"; reply: string; conversationId: string; sources: Source[]; proposals: ProposalView[]; droppedProposals: number };
 type Event = { type: "status"; text: string } | DoneEvent | { type: "error"; error: string; conversationId?: string };
@@ -20,8 +27,8 @@ type Event = { type: "status"; text: string } | DoneEvent | { type: "error"; err
  * Chat del Copilot. Riceve in streaming gli stati di avanzamento («Consulto i preventivi…»); la risposta compare quando è completa.
  * Le azioni proposte compaiono sotto la risposta e richiedono la conferma esplicita dell'utente.
  */
-export function ChatPanel({ conversationId: initialId, initialMessages, initialProposals = [], canUse, canConfirm, path, suggestions, compact = false, autoQuestion, onConversation }: {
-  conversationId?: string; initialMessages: ChatMessage[]; initialProposals?: ProposalView[]; canUse: boolean; canConfirm: boolean; path?: string; suggestions: string[]; compact?: boolean;
+export function ChatPanel({ conversationId: initialId, initialMessages, initialProposals = [], canUse, canConfirm, path, suggestions, compact = false, modes = false, autoQuestion, onConversation }: {
+  conversationId?: string; initialMessages: ChatMessage[]; initialProposals?: ProposalView[]; canUse: boolean; canConfirm: boolean; path?: string; suggestions: string[]; compact?: boolean; modes?: boolean;
   autoQuestion?: { text: string; nonce: number }; onConversation?: (id: string) => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -38,7 +45,13 @@ export function ChatPanel({ conversationId: initialId, initialMessages, initialP
   const lastNonce = useRef<number>(0);
   const convRef = useRef<string | undefined>(initialId);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [messages, pending, status, proposals]);
+  // scorre il registro della chat (non la pagina) solo quando arrivano nuovi contenuti: mai al primo caricamento
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    const el = endRef.current?.parentElement;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, pending, status, proposals]);
   useEffect(() => {
     if (!pending) return;
     const t = setInterval(() => setElapsed((s) => s + 1), 1000);
@@ -108,7 +121,7 @@ export function ChatPanel({ conversationId: initialId, initialMessages, initialP
           </div>
         )}
         {messages.map((m) => (
-          <div key={m.id} className={m.role === "user" ? "ml-8 rounded-lg bg-primary/10 p-3 text-sm" : "mr-4 rounded-lg border border-border p-3 text-sm"} data-testid={m.role === "assistant" ? "assistant-message" : "user-message"}>
+          <div key={m.id} className={m.role === "user" ? "ml-8 min-w-0 rounded-lg bg-primary/10 p-3 text-sm [overflow-wrap:anywhere]" : "mr-4 min-w-0 rounded-lg border border-border p-3 text-sm [overflow-wrap:anywhere]"} data-testid={m.role === "assistant" ? "assistant-message" : "user-message"}>
             <p className="mb-1 text-xs text-muted">{m.role === "user" ? "Tu" : "Copilot"}</p>
             {m.role === "user" ? <p className="whitespace-pre-wrap">{m.content}</p> : <RichText text={m.content} />}
             {m.role === "assistant" && m.sources && m.sources.length > 0 && (
@@ -133,9 +146,15 @@ export function ChatPanel({ conversationId: initialId, initialMessages, initialP
         <div ref={endRef} />
       </div>
 
+      {canUse && modes && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs" role="group" aria-label="Modalità (scorciatoie)">
+          <span className="text-muted">Modalità:</span>
+          {MODES.map((m) => <button key={m.label} type="button" disabled={pending} onClick={() => { setInput(m.lead); document.getElementById("copilot-input")?.focus(); }} title={m.hint} className="nx-t rounded-sm border border-border px-2 py-1 font-medium text-muted hover:border-primary/40 hover:text-foreground disabled:opacity-50">{m.label}</button>)}
+        </div>
+      )}
       {canUse ? (
         <form onSubmit={(e) => { e.preventDefault(); void send(input.trim()); }} className="space-y-2">
-          <Textarea value={input} onChange={(e) => setInput(e.target.value)} rows={compact ? 2 : 3}
+          <Textarea id="copilot-input" value={input} onChange={(e) => setInput(e.target.value)} rows={compact ? 2 : 3}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }}
             required maxLength={2000} disabled={pending} aria-label="Domanda" placeholder="Chiedi al Copilot, es. «Quali preventivi devo sollecitare?»" />
           {error && <Alert>{error}</Alert>}

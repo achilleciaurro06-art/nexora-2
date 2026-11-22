@@ -78,7 +78,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
         } />
 
       {archived && (
-        <Card className="mb-4 border-amber-400 bg-amber-50 dark:bg-amber-950/30" data-testid="archived-banner">
+        <Card className="mb-4 border-warning bg-warning/10" data-testid="archived-banner">
           <p className="font-medium">Cliente archiviato</p>
           <p className="text-sm text-muted">Archiviato il {dtt(customer.archived_at!)}{customer.archived_by ? ` da ${names.get(customer.archived_by) ?? "un collaboratore"}` : ""}. Tutti i dati sono conservati; non compare tra i clienti attivi né nei selettori.</p>
           {canRestore && <div className="mt-3"><RemoveButton variant="default" size="default" label="Ripristina cliente" action={restoreCustomerAction.bind(null, id)} confirmMessage={`Ripristinare «${customer.name}»?`} /></div>}
@@ -455,7 +455,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
                   <td>{i.quote_id ? <Link className="text-primary hover:underline" href={`/preventivi/${i.quote_id}`}>{label.get(i.quote_id) ?? "vedi"}</Link> : "—"}</td>
                   <td className="text-right">{i.taxable_cents === null ? "—" : formatEur(i.taxable_cents)}</td><td className="text-right">{i.vat_cents === null ? "—" : formatEur(i.vat_cents)}</td>
                   <td className="text-right font-medium">{formatEur(i.amount_cents)}</td>
-                  <td>{i.payment_status === "paid" ? <span className="text-green-700 dark:text-green-400">Incassata il {dt(i.paid_at)}</span> : <span className="text-amber-700 dark:text-amber-400">Da incassare</span>}</td>
+                  <td>{i.payment_status === "paid" ? <span className="text-success">Incassata il {dt(i.paid_at)}</span> : <span className="text-warning">Da incassare</span>}</td>
                   {canWrite && <td><InvoiceActions id={i.id} number={i.reference ?? "senza numero"} paid={i.payment_status === "paid"} canDelete={canDelete} today={today} /></td>}
                 </tr>
               ))}

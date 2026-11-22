@@ -46,7 +46,7 @@ export function ProposalCard({ p, canConfirm }: { p: ProposalView; canConfirm: b
           <span className="text-xs text-muted">Finché non confermi, non viene modificato nulla.</span>
         </div>
       )}
-      {state.kind === "done" && <p className="mt-2 text-xs text-green-600" role="status" data-testid="proposal-done">✓ {state.summary} {state.href && <Link className="underline" href={state.href}>Apri</Link>}</p>}
+      {state.kind === "done" && <p className="mt-2 text-xs text-success" role="status" data-testid="proposal-done">✓ {state.summary} {state.href && <Link className="underline" href={state.href}>Apri</Link>}</p>}
       {state.kind === "error" && (
         <div className="mt-2 space-y-2"><p role="alert" className="text-xs text-danger" data-testid="proposal-error">{state.error}</p>
           {canConfirm && p.status === "pending" && <Button size="sm" variant="outline" onClick={confirm} disabled={pending}>Riprova</Button>}</div>

@@ -1,7 +1,7 @@
 import { expect, test, type Browser } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import JSZip from "jszip";
-import { ADMIN } from "./helpers";
+import { ADMIN, quoteStep } from "./helpers";
 
 test.use({ storageState: "e2e/.auth/owner.json" });
 test.describe.configure({ mode: "serial" });
@@ -196,8 +196,10 @@ test("archiviazione di un cliente dalla lista: tutto resta conservato", async ({
   for (const title of ["Preventivo accettato", "Preventivo in bozza"]) {
     await page.goto(`/preventivi/nuovo?cliente=${customerId}`);
     await page.getByLabel("Oggetto").fill(title);
+    await quoteStep(page, "Prodotti e servizi");
     await page.getByLabel("Descrizione").first().fill("Voce di prova");
     await page.getByLabel("Prezzo").first().fill("100");
+    await quoteStep(page, "Riepilogo");
     await page.getByRole("button", { name: "Salva preventivo" }).click();
     await expect(page).toHaveURL(/\/preventivi\/[0-9a-f-]{36}$/);
     if (title === "Preventivo accettato") {

@@ -58,9 +58,9 @@ export default async function QuotePage({ params, searchParams }: { params: Prom
       {errore === "duplicazione" && <div className="mb-4"><Alert>Impossibile duplicare il preventivo.</Alert></div>}
       {errore === "cliente-archiviato" && <div className="mb-4"><Alert>Il cliente è archiviato: ripristinalo prima di creare nuovi preventivi.</Alert></div>}
       {customer?.archived_at && <div className="mb-4"><Alert>Il cliente di questo preventivo è archiviato.</Alert></div>}
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Card>
-          <dl className="mb-4 grid gap-2 text-sm sm:grid-cols-2">
+          <dl className="mb-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
             <div><dt className="text-muted">Cliente</dt><dd>{customer?.deleted_at ? <span className="text-muted">{customer.name} (cliente rimosso)</span> : <Link className="text-primary hover:underline" href={`/clienti/${quote.customer_id}`}>{customer?.name}</Link>}</dd></div>
             <div><dt className="text-muted">Stato</dt><dd><StatusBadge status={quote.status} /></dd></div>
             <div><dt className="text-muted">Emissione</dt><dd>{new Date(quote.issue_date).toLocaleDateString("it-IT")}</dd></div>

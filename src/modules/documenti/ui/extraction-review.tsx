@@ -27,7 +27,7 @@ export type ReviewProps = {
   aiNotes?: string;
 };
 
-const Inferred = ({ path, list }: { path: string; list: string[] }) => (list.includes(path) ? <Badge className="ml-2 border-amber-500 text-amber-600">dedotto</Badge> : null);
+const Inferred = ({ path, list }: { path: string; list: string[] }) => (list.includes(path) ? <Badge className="ml-2 border-warning text-warning">dedotto</Badge> : null);
 
 export function ExtractionReview(p: ReviewProps) {
   const { state, pending, onSubmit } = useFormAction(p.action);
@@ -52,7 +52,7 @@ export function ExtractionReview(p: ReviewProps) {
             </div>
           )}
           {p.warnings.length > 0 && (
-            <div><p className="font-medium text-amber-600">Controlli di coerenza</p><ul className="mt-1 list-disc pl-5">{p.warnings.map((w) => <li key={w}>{w}</li>)}</ul></div>
+            <div><p className="font-medium text-warning">Controlli di coerenza</p><ul className="mt-1 list-disc pl-5">{p.warnings.map((w) => <li key={w}>{w}</li>)}</ul></div>
           )}
           {p.missing.length > 0 && (
             <div><p className="font-medium">Non presenti nel documento</p><p className="mt-1 flex flex-wrap gap-1">{p.missing.map((m) => <Badge key={m}>{fieldLabel(m)}</Badge>)}</p></div>

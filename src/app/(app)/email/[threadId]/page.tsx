@@ -14,6 +14,7 @@ import { MarkRead } from "@/modules/email/ui/sync-button";
 import { Alert, Badge, Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { fmtDateTime } from "@/lib/datetime";
+import { ThreadPane } from "@/modules/email/ui/thread-pane";
 
 export default async function ThreadPage({ params, searchParams }: { params: Promise<{ threadId: string }>; searchParams: Promise<{ inviata?: string }> }) {
   const { threadId } = await params;
@@ -44,7 +45,9 @@ export default async function ThreadPage({ params, searchParams }: { params: Pro
   const candidates = ((t.link_candidates ?? []) as { customer_id: string; contact_id: string | null; name: string; archived: boolean }[]);
 
   return (
-    <>
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <ThreadPane orgId={orgId} activeId={threadId} />
+      <div className="min-w-0">
       <MarkRead threadId={threadId} unread={t.unread_count as number} />
       {sp.inviata && <div className="mb-4"><Alert kind="success">Email inviata.</Alert></div>}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -54,8 +57,8 @@ export default async function ThreadPage({ params, searchParams }: { params: Pro
         </div>
         <Link href="/email" className={buttonVariants({ variant: "ghost", size: "sm" })}>← Torna alla posta</Link>
       </div>
-      <div className="grid gap-6 xl:grid-cols-[3fr_1fr]">
-        <div className="space-y-3" data-testid="messages">
+      <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-3" data-testid="messages">
           {messages.map((m, i) => {
             const from = m.from_name ? `${m.from_name} <${m.from_address}>` : (m.from_address as string);
             const files = attByMsg.get(m.id as string) ?? [];
@@ -112,10 +115,11 @@ export default async function ThreadPage({ params, searchParams }: { params: Pro
             {canWrite ? <LinkForm threadId={threadId} customers={customers.map((c) => ({ id: c.id, name: c.name }))} quotes={(quotes ?? []) as { id: string; number: string; title: string | null }[]} current={{ customerId: t.customer_id as string | null, contactId: t.contact_id as string | null, quoteId: t.quote_id as string | null }} /> : null}
             {t.quote_id && <p className="mt-2 text-sm"><Link className="text-primary hover:underline" href={`/preventivi/${t.quote_id}`}>Vai al preventivo collegato</Link></p>}
           </Card>
-          {canWrite && <Card><h3 className="mb-2 font-medium">Lavoro collegato</h3><WorkPanel threadId={threadId} hasCustomer={!!t.customer_id} task={taskRow.data as { id: string; title: string } | null} followUp={fuRow.data as { id: string; title: string } | null} openTasks={(openTasks ?? []) as { id: string; title: string }[]} openFollowUps={(openFus ?? []) as { id: string; title: string }[]} /></Card>}
+          {canWrite && <Card className="[&_button]:h-auto [&_button]:min-h-8 [&_button]:whitespace-normal [&_button]:py-1.5 [&_button]:text-left"><h3 className="mb-2 font-medium">Lavoro collegato</h3><WorkPanel threadId={threadId} hasCustomer={!!t.customer_id} task={taskRow.data as { id: string; title: string } | null} followUp={fuRow.data as { id: string; title: string } | null} openTasks={(openTasks ?? []) as { id: string; title: string }[]} openFollowUps={(openFus ?? []) as { id: string; title: string }[]} /></Card>}
           {lastMsg && can(ctx.org.role, "ai:use") && <Card><h3 className="mb-2 font-medium">Copilot</h3><div className="mb-3 flex flex-wrap gap-2"><AskCopilotButton question="Riassumi questa conversazione" label="Riassumi" /><AskCopilotButton question="Preparami una risposta professionale a questa conversazione" label="Prepara una risposta" /><AskCopilotButton question="Quali richieste e obiezioni commerciali ci sono in questa conversazione?" label="Richieste e obiezioni" /><AskCopilotButton question="Suggerisci un'attività collegata a questa conversazione" label="Suggerisci un'attività" /></div><AnalysisPanel messageId={lastMsg.id as string} threadId={threadId} canCreateFollowUp={!!t.customer_id} hasTask={!!t.task_id} hasFollowUp={!!t.follow_up_id} /></Card>}
         </div>
       </div>
-    </>
+      </div>
+    </div>
   );
 }

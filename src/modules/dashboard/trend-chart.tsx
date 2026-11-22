@@ -8,22 +8,29 @@ export function TrendChart({ rows, mode, caption }: { rows: Row[]; mode: "value"
   const max = Math.max(1, ...rows.map(val));
   return (
     <figure>
-      <figcaption className="mb-2 text-sm font-medium">{caption}</figcaption>
-      <div className="flex h-32 items-end gap-1 overflow-x-auto" role="img" aria-label={caption}>
-        {rows.map((r) => {
-          const total = (val(r) / max) * 100;
-          const acc = mode === "value" && val(r) > 0 ? ((r.acceptedCents ?? 0) / val(r)) * 100 : 0;
-          return (
-            <div key={r.key} className="flex min-w-6 flex-1 flex-col items-center justify-end gap-1" title={`${r.label}: ${mode === "value" ? formatEur(r.valueCents) : r.count}`}>
-              <div className="relative flex w-full items-end rounded-t bg-primary/25" style={{ height: `${Math.max(total, val(r) > 0 ? 3 : 0)}%` }}>
-                {acc > 0 && <div className="w-full rounded-t bg-primary" style={{ height: `${acc}%` }} />}
+      <figcaption className="mb-3 text-sm font-medium text-muted">{caption}</figcaption>
+      <div className="relative h-44" role="img" aria-label={caption}>
+        {/* linee guida */}
+        <div aria-hidden className="absolute inset-0 flex flex-col justify-between pb-5">{[0, 1, 2, 3].map((i) => <div key={i} className="border-t border-dashed border-line" />)}</div>
+        <div className="absolute inset-0 flex items-stretch gap-2 pb-0">
+          {rows.map((r) => {
+            const total = (val(r) / max) * 100;
+            const acc = mode === "value" && val(r) > 0 ? ((r.acceptedCents ?? 0) / val(r)) * 100 : 0;
+            return (
+              <div key={r.key} className="group flex min-w-6 flex-1 flex-col" title={`${r.label}: ${mode === "value" ? formatEur(r.valueCents) : r.count}`}>
+                <div className="relative flex flex-1 items-end justify-center pb-0">
+                  <div className="relative w-full max-w-10 overflow-hidden rounded-t-sm bg-primary/20 transition-[height,background-color] duration-200 group-hover:bg-primary/30" style={{ height: `${Math.max(total, val(r) > 0 ? 3 : 0)}%` }}>
+                    {acc > 0 && <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-primary to-[#2f6bff]" style={{ height: `${acc}%` }} />}
+                    {mode === "count" && val(r) > 0 && <div className="absolute inset-0 bg-gradient-to-t from-primary to-[#2f6bff]" />}
+                  </div>
+                </div>
+                <span className="h-5 pt-1 text-center text-[10px] text-muted">{r.label}</span>
               </div>
-              <span className="text-[10px] text-muted">{r.label}</span>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-      {mode === "value" && <p className="mt-1 flex gap-3 text-xs text-muted"><span><span className="mr-1 inline-block size-2 rounded-sm bg-primary/25" />Valore preventivi</span><span><span className="mr-1 inline-block size-2 rounded-sm bg-primary" />di cui accettati</span></p>}
+      {mode === "value" && <p className="mt-2 flex gap-4 text-xs text-muted"><span className="inline-flex items-center gap-1.5"><span className="inline-block size-2.5 rounded-sm bg-primary/20" />Valore preventivi</span><span className="inline-flex items-center gap-1.5"><span className="inline-block size-2.5 rounded-sm bg-primary" />di cui accettati</span></p>}
       <table className="sr-only">
         <caption>{caption}</caption>
         <thead><tr><th>Mese</th><th>{mode === "value" ? "Valore" : "Numero"}</th></tr></thead>

@@ -2,7 +2,7 @@ import { addDays } from "@/lib/datetime";
 
 export type CalView = "mese" | "settimana" | "giorno";
 export const CAL_VIEWS: { key: CalView; label: string }[] = [{ key: "mese", label: "Mese" }, { key: "settimana", label: "Settimana" }, { key: "giorno", label: "Giorno" }];
-export const parseCalView = (v: string | undefined): CalView => (CAL_VIEWS.find((x) => x.key === v)?.key ?? "mese");
+export const parseCalView = (v: string | undefined): CalView => (CAL_VIEWS.find((x) => x.key === v)?.key ?? "settimana");
 export const isDateStr = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
 
 /** 0 = lunedì … 6 = domenica */

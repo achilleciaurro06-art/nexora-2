@@ -19,10 +19,10 @@ const ITEMS = [
 export function SettingsNav() {
   const path = usePathname();
   return (
-    <nav aria-label="Sezioni delle impostazioni" className="mb-6 flex gap-1 overflow-x-auto border-b border-border pb-2">
+    <nav aria-label="Sezioni delle impostazioni" className="mb-6 flex gap-1 overflow-x-auto border-b border-border">
       {ITEMS.map((i) => (
         <Link key={i.href} href={i.href} aria-current={path.startsWith(i.href) ? "page" : undefined}
-          className={cn("whitespace-nowrap rounded-md px-3 py-1.5 text-sm hover:bg-border/50", path.startsWith(i.href) && "bg-primary/10 font-medium text-primary")}>
+          className={cn("whitespace-nowrap nx-t -mb-px border-b-2 border-transparent px-3 py-2 text-sm text-muted hover:text-foreground", path.startsWith(i.href) && "bg-primary/10 font-medium text-primary")}>
           {i.label}
         </Link>
       ))}

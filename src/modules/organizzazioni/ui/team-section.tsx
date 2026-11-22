@@ -88,7 +88,7 @@ export async function TeamSection({ ctx }: { ctx: Context }) {
             {matrix.map((row) => (
               <tr key={row.permission}>
                 <td>{row.label}</td>
-                {ROLES.map((r) => <td key={r} className="text-center">{row.roles[r] ? <span aria-label="Sì" className="text-green-600">●</span> : <span aria-label="No" className="text-muted">—</span>}</td>)}
+                {ROLES.map((r) => <td key={r} className="text-center">{row.roles[r] ? <span aria-label="Sì" className="text-success">●</span> : <span aria-label="No" className="text-muted">—</span>}</td>)}
               </tr>
             ))}
           </tbody>

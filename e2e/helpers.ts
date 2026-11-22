@@ -31,3 +31,6 @@ export async function createAuthUser(email: string, password: string, fullName: 
 
 export const ADMIN = { email: "admin@nexora.test", password: "Admin-di-prova-123", name: "Admin Piattaforma" };
 export const OWNER = { email: "titolare@azienda-prova.it", password: "Titolare-di-prova-123", name: "Mario Titolare", org: "Azienda Prova S.r.l." };
+
+/** Procedura guidata del preventivo: apre il passaggio indicato (Cliente e dati, Prodotti e servizi, Condizioni, Riepilogo). */
+export const quoteStep = (page: import("@playwright/test").Page, name: string) => page.getByRole("list", { name: "Passaggi" }).getByRole("button", { name: new RegExp(name) }).click();

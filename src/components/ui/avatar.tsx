@@ -11,6 +11,6 @@ export function Avatar({ name, url, size = 32, className }: { name: string | nul
   return url ? (
     <img src={url} alt="" width={size} height={size} style={style} className={cn("shrink-0 rounded-full border border-border object-cover", className)} />
   ) : (
-    <span aria-hidden style={style} className={cn("inline-flex shrink-0 items-center justify-center rounded-full bg-primary/15 font-medium text-primary", className)}>{initials(name)}</span>
+    <span aria-hidden style={style} className={cn("inline-flex shrink-0 items-center justify-center rounded-full bg-primary/12 font-semibold text-primary", className)}>{initials(name)}</span>
   );
 }
