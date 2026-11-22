@@ -52,7 +52,7 @@ export function Sidebar({ isPlatformAdmin, labels = {}, badges = {}, unread, org
     const badge = badges[i.href] ?? 0;
     return (
       <Link key={i.href} href={i.href} aria-current={active ? "page" : undefined} title={collapsed ? label(i) : undefined}
-        className={cn("nx-t group relative flex items-center gap-3 rounded-md px-3 text-sm", opts.child ? "h-9 text-[0.82rem]" : "h-10",
+        className={cn("nx-t group relative flex items-center gap-3 rounded-md px-3 text-sm", opts.child ? "h-[clamp(28px,3.8dvh,36px)] text-[0.82rem]" : "h-[clamp(30px,4.3dvh,40px)]",
           active ? "bg-primary/20 font-medium text-white" : "text-slate-300 hover:bg-white/[0.06] hover:text-white", collapsed && "justify-center px-0")}>
         {active && <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-sky" />}
         <Icon className={cn("size-[18px] shrink-0", active ? "text-sky" : "text-slate-400 group-hover:text-slate-200")} />
@@ -64,31 +64,31 @@ export function Sidebar({ isPlatformAdmin, labels = {}, badges = {}, unread, org
 
   return (
     <aside className={cn("no-print sticky top-0 hidden h-dvh shrink-0 flex-col bg-carbon text-slate-200 md:flex nx-t", collapsed ? "w-[72px]" : "w-[248px]")}>
-      <div className={cn("flex h-16 items-center border-b border-white/[0.07] px-4", collapsed ? "justify-center" : "justify-between")}>
+      <div className={cn("flex h-[clamp(48px,7dvh,64px)] items-center border-b border-white/[0.07] px-4", collapsed ? "justify-center" : "justify-between")}>
         <Link href="/dashboard" aria-label="NEXORA home">{collapsed ? <LogoMark size={28} /> : <Logo />}</Link>
         {!collapsed && <button type="button" onClick={toggle} aria-label="Riduci la barra laterale" className="nx-t rounded-md p-1.5 text-slate-400 hover:bg-white/[0.06] hover:text-white"><ChevronsLeft className="size-4" /></button>}
       </div>
       {collapsed && <button type="button" onClick={toggle} aria-label="Espandi la barra laterale" className="nx-t mx-auto mt-2 rounded-md p-1.5 text-slate-400 hover:bg-white/[0.06] hover:text-white"><ChevronsRight className="size-4" /></button>}
-      {!collapsed && <div className="px-4 pt-4">{orgSlot}</div>}
+      {!collapsed && <div className="px-4 pt-[clamp(6px,1.6dvh,16px)]">{orgSlot}</div>}
 
-      <nav className="mt-3 flex-1 space-y-0.5 overflow-y-auto px-3 pb-3" aria-label="Principale">
+      <nav className="mt-[clamp(4px,1.2dvh,12px)] flex-1 space-y-0.5 overflow-y-auto px-3 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Principale">
         {MAIN.map((i) => link(i))}
-        <p className={cn("flex items-center gap-2 px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500", collapsed && "justify-center px-0")}>
+        <p className={cn("flex items-center gap-2 px-3 pb-1 pt-[clamp(6px,1.8dvh,16px)] text-[11px] font-semibold uppercase tracking-wider text-slate-500", collapsed && "justify-center px-0")}>
           <CalendarDays className="size-3.5" />{!collapsed && "Agenda"}
         </p>
         {AGENDA.map((i) => link(i, { child: true }))}
         {isPlatformAdmin && <div className="pt-2">{link(ADMIN)}</div>}
       </nav>
 
-      <div className="space-y-1 border-t border-white/[0.07] p-3">
+      <div className="space-y-1 border-t border-white/[0.07] p-3 pt-[clamp(6px,1.4dvh,12px)]">
         <Link href={COPILOT.href} aria-current={on(path, COPILOT.href) ? "page" : undefined} title={collapsed ? "Copilot AI" : undefined}
-          className={cn("nx-t relative flex h-11 items-center gap-3 overflow-hidden rounded-md px-3 text-sm font-medium text-white ring-1 ring-sky/30 hover:ring-sky/60", collapsed && "justify-center px-0",
+          className={cn("nx-t relative flex h-[clamp(34px,4.9dvh,44px)] items-center gap-3 overflow-hidden rounded-md px-3 text-sm font-medium text-white ring-1 ring-sky/30 hover:ring-sky/60", collapsed && "justify-center px-0",
             on(path, COPILOT.href) ? "bg-gradient-to-r from-primary to-[#0a3ad0]" : "bg-gradient-to-r from-deep to-[#0b2270]")}>
           <Sparkles className="size-[18px] shrink-0 text-sky" />
           {!collapsed && <span>Copilot AI</span>}
         </Link>
         <Link href="/notifiche" aria-label={unread ? `Notifiche: ${unread} non lette` : "Notifiche"} title={collapsed ? "Notifiche" : undefined}
-          className={cn("nx-t relative flex h-10 items-center gap-3 rounded-md px-3 text-sm text-slate-300 hover:bg-white/[0.06] hover:text-white", collapsed && "justify-center px-0")}>
+          className={cn("nx-t relative flex h-[clamp(30px,4.3dvh,40px)] items-center gap-3 rounded-md px-3 text-sm text-slate-300 hover:bg-white/[0.06] hover:text-white", collapsed && "justify-center px-0")}>
           <Bell className="size-[18px] shrink-0 text-slate-400" />
           {!collapsed && <span>Notifiche</span>}
           {unread > 0 && <span className={cn("rounded-sm bg-primary px-1.5 text-[11px] font-semibold text-white", collapsed ? "absolute right-1.5 top-1" : "ml-auto")}>{unread > 99 ? "99+" : unread}</span>}
