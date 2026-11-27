@@ -204,8 +204,8 @@ test("archiviazione di un cliente dalla lista: tutto resta conservato", async ({
     await expect(page).toHaveURL(/\/preventivi\/[0-9a-f-]{36}$/);
     if (title === "Preventivo accettato") {
       await page.getByRole("button", { name: "Segna inviato" }).click();
-      await page.getByRole("button", { name: "Segna accettato" }).click();
-      await expect(page.getByText("Accettato").first()).toBeVisible();
+      await page.getByRole("button", { name: "Segna fatto" }).click();
+      await expect(page.locator("[data-status='accepted']").first()).toContainText("Fatto");
     }
   }
   await page.goto("/clienti");

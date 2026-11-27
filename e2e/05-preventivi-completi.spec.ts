@@ -91,9 +91,9 @@ test("fatturato registrato: solo su preventivi accettati, distinto dal valore, c
   await page.goto(draftUrl);
   await expect(page.getByTestId("billing-card")).toHaveCount(0); // bozza: nessun fatturato
   await page.getByRole("button", { name: "Segna inviato" }).click();
-  await expect(page.getByText("Inviato").first()).toBeVisible();
+  await expect(page.locator("[data-status='sent']").first()).toContainText("Inviato");
   await expect(page.getByTestId("billing-card")).toHaveCount(0); // inviato: ancora no
-  await page.getByRole("button", { name: "Segna accettato" }).click();
+  await page.getByRole("button", { name: "Segna fatto" }).click();
   const card = page.getByTestId("billing-card");
   await expect(card).toBeVisible();
   await expect(card.getByTestId("billed-total")).toHaveText(/0,00/);
@@ -147,4 +147,41 @@ test("un collaboratore vede la numerazione ma non può modificarla; può duplica
   await page.goto(quoteUrl);
   await expect(page.getByRole("button", { name: "Duplica", exact: true })).toBeVisible();
   await ctx.close();
+});
+
+test("stato modificabile subito dalla lista e dalla scheda, con conferma e colori coerenti; «Fatto» bloccato", async ({ page }) => {
+  const o = sql("select id from public.organizations where name = 'Azienda Prova S.r.l.'");
+  const c = sql("select id from public.customers where deleted_at is null and archived_at is null limit 1");
+  const q = sql(`insert into public.quotes (organization_id, customer_id, title) values ('${o}', '${c}', 'Cambio stato rapido') returning id`).split("\n")[0]!;
+  const number = sql(`select number from public.quotes where id = '${q}'`);
+  const status = () => sql(`select status from public.quotes where id = '${q}'`);
+
+  // dalla lista
+  await page.goto("/preventivi");
+  const row = page.getByRole("row").filter({ hasText: "Cambio stato rapido" });
+  const menu = row.getByRole("combobox", { name: new RegExp(`Stato del preventivo ${number}`) });
+  await expect(menu).toHaveValue("draft");
+  await expect(row.locator("[data-status='draft']")).toContainText("In preparazione");
+  await menu.selectOption("rejected");
+  await expect(row.getByText("Salvato")).toBeVisible();
+  await expect.poll(status).toBe("rejected");
+  await expect(row.locator("[data-status='rejected']")).toContainText("Perso");
+
+  // dalla scheda
+  await page.goto(`/preventivi/${q}`);
+  const detail = page.getByRole("combobox", { name: /Stato del preventivo/ });
+  await detail.selectOption("expired");
+  await expect(page.getByText("Salvato", { exact: true })).toBeVisible();
+  await expect.poll(status).toBe("expired");
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: /Stato del preventivo/ })).toHaveValue("expired");
+  await expect(page.locator("[data-status='expired']").first()).toContainText("Chiuso");
+
+  // «Fatto» (accettato): resta bloccato come prima, senza menu
+  await page.getByRole("combobox", { name: /Stato del preventivo/ }).selectOption("accepted");
+  await expect.poll(status).toBe("accepted");
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: /Stato del preventivo/ })).toHaveCount(0);
+  await expect(page.locator("[data-status='accepted']").first()).toContainText("Fatto");
+
 });

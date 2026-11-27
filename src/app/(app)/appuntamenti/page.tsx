@@ -12,8 +12,11 @@ import { dayRangeUtc, fmtDate, fmtTime, todayIn, utcToZonedParts } from "@/lib/d
 import { isUuid } from "@/lib/ids";
 import { cn } from "@/lib/utils";
 import { AgendaNav } from "@/components/layout/agenda-nav";
+import { StatusChip, type Tone } from "@/components/ui/status-chip";
+import { AlertTriangle } from "lucide-react";
 
 export const metadata = { title: "Appuntamenti" };
+const APPOINTMENT_TONE: Record<string, Tone> = { scheduled: "info", completed: "success", cancelled: "neutral" };
 type Row = { id: string; title: string; starts_at: string; ends_at: string; status: string; location: string | null; assignee_id: string | null; customer_id: string | null; customers: { name: string } | { name: string }[] | null };
 const WD = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 
@@ -137,7 +140,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
                   <td><Link className="font-medium text-primary hover:underline" href={`/appuntamenti/${a.id}`}>{a.title}</Link></td>
                   <td>{cname(a) ? <Link className="hover:underline" href={`/clienti/${a.customer_id}`}>{cname(a)}</Link> : "—"}</td>
                   <td>{a.location ?? "—"}</td>
-                  <td>{APPOINTMENT_STATUS_LABEL[a.status as keyof typeof APPOINTMENT_STATUS_LABEL]}{a.status === "scheduled" && new Date(a.ends_at) < now ? <span className="text-danger"> · da chiudere</span> : ""}</td>
+                  <td><span className="inline-flex flex-wrap items-center gap-1"><StatusChip tone={APPOINTMENT_TONE[a.status] ?? "neutral"}>{APPOINTMENT_STATUS_LABEL[a.status as keyof typeof APPOINTMENT_STATUS_LABEL]}</StatusChip>{a.status === "scheduled" && new Date(a.ends_at) < now ? <StatusChip tone="danger" icon={AlertTriangle}>da chiudere</StatusChip> : null}</span></td>
                 </tr>
               ))}
             </tbody>

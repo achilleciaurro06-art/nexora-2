@@ -12,10 +12,13 @@ import { SuggestionList, type SuggestionRow } from "@/modules/copilot/ui/suggest
 import { Badge, Card, PageHeader, Table } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
+import { StatusChip, type Tone } from "@/components/ui/status-chip";
 
 export const metadata = { title: "Documenti" };
 export const maxDuration = 60;
 
+/** Colore dello stato di analisi: in corso = ambra, analizzato = verde, non riuscita = rosso; nessuna analisi = nessun chip. */
+const ANALYSIS_TONE: Record<string, Tone | undefined> = { pending: "warning", done: "success", failed: "danger" };
 const ANALYSIS = { none: "—", pending: "In corso", done: "Analizzato", failed: "Non riuscita" } as const;
 
 export default async function DocumentsPage({ searchParams }: { searchParams: Promise<{ q?: string; tipo?: string; cliente?: string }> }) {
@@ -83,9 +86,10 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
                 <td>{(d.size_bytes as number) < 1_048_576 ? `${Math.max(1, Math.round((d.size_bytes as number) / 1024))} KB` : `${((d.size_bytes as number) / 1_048_576).toFixed(1)} MB`}</td>
                 <td>{new Date(d.created_at as string).toLocaleDateString("it-IT")}</td>
                 <td>
+                  {ANALYSIS_TONE[d.analysis_status as string] && <StatusChip tone={ANALYSIS_TONE[d.analysis_status as string]!} className="mb-1">{ANALYSIS[d.analysis_status as keyof typeof ANALYSIS]}</StatusChip>}
                   {canAnalyze && ANALYZABLE_MIMES.has(mime)
                     ? <AnalyzeForm documentId={d.id as string} label={d.analysis_status === "done" ? "Rianalizza" : d.analysis_status === "failed" ? "Riprova" : "Analizza con AI"} />
-                    : <span className="text-muted">{ANALYSIS[d.analysis_status as keyof typeof ANALYSIS] ?? "—"}</span>}
+                    : !ANALYSIS_TONE[d.analysis_status as string] && <span className="text-muted">—</span>}
                 </td>
                 <td className="whitespace-nowrap text-right">
                   {viewable && <Link className="mr-2 text-sm text-primary hover:underline" href={`/documenti/${d.id}/download?inline=1`} prefetch={false} target="_blank">Visualizza</Link>}

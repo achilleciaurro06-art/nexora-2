@@ -16,9 +16,11 @@ import { fmtDate, fmtDateTime, fmtLongDay, utcToZonedParts } from "@/lib/datetim
 import { isUuid } from "@/lib/ids";
 import { cn } from "@/lib/utils";
 import { AgendaNav } from "@/components/layout/agenda-nav";
+import { StatusChip, type Tone } from "@/components/ui/status-chip";
 
 export const metadata = { title: "Attività" };
 
+const TASK_TONE: Record<string, Tone> = { todo: "warning", in_progress: "info", done: "success", cancelled: "neutral" };
 type Row = {
   id: string; title: string; status: string; priority: keyof typeof PRIORITY_LABEL; due_at: string | null; due_has_time: boolean; created_at: string;
   assignee_id: string | null; customer_id: string | null; quote_id: string | null; type_id: string | null;
@@ -93,7 +95,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
           const done = t.status === "done" || t.status === "cancelled";
           return (
             <tr key={t.id}>
-              <td className={done ? "text-muted line-through" : "font-medium"}><Link className="hover:underline" href={`/attivita/${t.id}`}>{t.title}</Link></td>
+              <td className={done ? "text-muted" : "font-medium"}><Link className={done ? "line-through hover:underline" : "hover:underline"} href={`/attivita/${t.id}`}>{t.title}</Link> <StatusChip tone={TASK_TONE[t.status] ?? "neutral"} className="ml-1 align-middle">{STATUS_LABEL[t.status as keyof typeof STATUS_LABEL] ?? t.status}</StatusChip></td>
               <td className="text-sm">{one(t.task_types)?.label ?? "Attività generica"}</td>
               <Cell t={t} />
               <td>{t.assignee_id ? (names.get(t.assignee_id) ?? "—") : "—"}</td>

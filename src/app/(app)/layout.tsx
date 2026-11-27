@@ -56,7 +56,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {unread > 0 && <span className="absolute right-1 top-1 size-2 rounded-full bg-sky" />}
           </Link>
         </header>
-        <main className="mx-auto min-w-0 max-w-[1500px] p-4 pb-40 md:p-8 md:pb-10">{children}</main>
+        <main className="mx-auto min-w-0 max-w-[1500px] p-4 pb-40 md:p-8 md:pb-24">{children}</main>
       </div>
       <BottomNav isPlatformAdmin={admin} labels={labels} unread={unread} userSlot={userSlot} />
       <CopilotDock canUse={can(ctx.org.role, "ai:use")} canConfirm={can(ctx.org.role, "data:write")} />

@@ -12,6 +12,8 @@ const buttonVariants = cva(
         ghost: "text-foreground hover:bg-foreground/[0.06]",
         danger: "bg-danger text-white shadow-card hover:opacity-90",
         dark: "bg-carbon text-white hover:bg-carbon-2",
+        /** assistente AI: accento blu elettrico, riconoscibile ma non invadente */
+        ai: "border border-primary/30 bg-primary/[0.07] text-primary hover:border-primary/60 hover:bg-primary/[0.13]",
       },
       size: { default: "h-10 px-4", sm: "h-8 px-3 text-xs", lg: "h-11 px-6 text-[0.95rem]" },
     },

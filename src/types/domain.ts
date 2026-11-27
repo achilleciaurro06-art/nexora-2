@@ -25,5 +25,5 @@ export type Task = {
   due_at: string | null; customer_id: string | null; quote_id: string | null; assignee_id: string | null;
 };
 export const QUOTE_STATUS_LABEL: Record<QuoteStatus, string> = {
-  draft: "Bozza", sent: "Inviato", accepted: "Accettato", rejected: "Rifiutato", expired: "Scaduto",
+  draft: "In preparazione", sent: "Inviato", accepted: "Fatto", rejected: "Perso", expired: "Chiuso",
 };

@@ -304,7 +304,7 @@ test("invio di un preventivo per email: PDF allegato, collegamento al preventivo
   expect(sql(`select count(*) from public.email_threads where quote_id = '${q}' and customer_id = '${c}' and link_status = 'manual'`)).toBe("1");
   expect(sql(`select count(*) from public.email_attachments a join public.email_messages m on m.id = a.message_id where m.subject = 'Preventivo ${number}' and a.mime_type = 'application/pdf'`)).toBe("1");
   await page.goto(`/preventivi/${q}`);
-  await expect(page.getByText("Inviato").first()).toBeVisible();
+  await expect(page.locator("[data-status='sent']").first()).toContainText("Inviato");
 });
 
 test("clienti archiviati: storico consultabile, nessuna nuova email dai selettori né collegamenti manuali", async ({ page }) => {

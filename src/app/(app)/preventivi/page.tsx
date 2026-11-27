@@ -13,6 +13,7 @@ import { deleteQuoteAction } from "@/modules/preventivi/actions";
 import { getSector } from "@/modules/settore/queries";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
+import { QuoteStatusMenu } from "@/modules/preventivi/ui/status-menu";
 
 export const metadata = { title: "Preventivi" };
 const FILTERS: (QuoteStatus | "")[] = ["", "draft", "sent", "accepted", "rejected", "expired"];
@@ -23,6 +24,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   const db = await createClient();
   const quotes = await listQuotes(db, ctx.org.organizationId, FILTERS.includes(status as QuoteStatus) ? status : undefined);
   const { terms } = await getSector(db, ctx.org.organizationId);
+  const canWrite = can(ctx.org.role, "data:write");
   const canDelete = can(ctx.org.role, "data:delete");
   return (
     <>
@@ -48,7 +50,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
                 <td><Link className="font-medium text-primary hover:underline" href={`/preventivi/${q.id}`}>{q.number}</Link></td>
                 <td>{c ? (c.deleted_at ? <span className="text-muted">{c.name} (cliente rimosso)</span> : c.archived_at ? <span className="text-muted">{c.name} (cliente archiviato)</span> : c.name) : "—"}</td><td>{q.title ?? "—"}</td>
                 <td>{new Date(q.issue_date).toLocaleDateString("it-IT")}</td>
-                <td><StatusBadge status={q.status} /></td>
+                <td>{canWrite && q.status !== "accepted" ? <QuoteStatusMenu id={q.id} status={q.status} number={q.number} /> : <StatusBadge status={q.status} />}</td>
                 <td className="text-right">{formatEur(q.total_cents)}</td>
                 {canDelete && (
                   <td className="text-right">

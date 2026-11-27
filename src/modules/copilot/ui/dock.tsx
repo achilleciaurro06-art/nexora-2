@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatPanel } from "./chat";
 import { parsePageContext, suggestedQuestions } from "../page-context";
@@ -42,14 +43,15 @@ export function CopilotDock({ canUse, canConfirm }: { canUse: boolean; canConfir
   return (
     <>
       {!open && (
-        <button type="button" onClick={() => setOpen(true)} className="no-print fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 md:bottom-4 z-40 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground shadow-lg hover:opacity-90" aria-label="Apri il Copilot" data-testid="copilot-open">
-          Copilot
+        <button type="button" onClick={() => setOpen(true)} className="nx-t no-print fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 md:bottom-4 z-40 inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-r from-primary to-[#0a3ad0] pl-4 pr-5 text-sm font-medium text-primary-foreground shadow-lg ring-1 ring-sky/40 hover:ring-sky/80 hover:shadow-xl active:translate-y-px" aria-label="Apri il Copilot AI, l'assistente intelligente di NEXORA" title="Copilot AI: l'assistente intelligente di NEXORA" data-testid="copilot-open">
+          <Sparkles className="size-[18px] text-sky" aria-hidden />
+          Copilot AI
         </button>
       )}
       {open && (
-        <section role="dialog" aria-label="Copilot" aria-modal="false" className="no-print fixed inset-x-2 bottom-2 z-50 flex max-h-[88dvh] flex-col rounded-xl border border-border bg-card p-3 shadow-2xl sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[440px]" data-testid="copilot-dock">
+        <section role="dialog" aria-label="Copilot AI" aria-modal="false" className="no-print fixed inset-x-2 bottom-2 z-50 flex max-h-[88dvh] flex-col rounded-xl border border-border bg-card p-3 shadow-2xl sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[440px]" data-testid="copilot-dock">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold">Copilot</p>
+            <p className="flex items-center gap-1.5 text-sm font-semibold"><Sparkles className="size-4 text-primary" aria-hidden />Copilot AI</p>
             <div className="flex items-center gap-1">
               <Button size="sm" variant="ghost" onClick={() => { setConv(undefined); setAuto(undefined); setEpoch((n) => n + 1); }}>Nuova</Button>
               {conv && <Link href={`/copilot?c=${conv}`} className="px-2 text-xs underline">Apri a schermo intero</Link>}

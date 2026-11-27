@@ -23,6 +23,7 @@ import { DigitalTexture } from "@/components/brand/digital-texture";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Bell, ChevronRight, FileText, Plus, Target, Upload, Users, Wallet } from "lucide-react";
+import { quoteStatusBar } from "@/components/ui/status-badge";
 
 export const metadata = { title: "Dashboard" };
 
@@ -78,7 +79,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     { label: "Preventivi emessi", value: String(ps.count), sub: formatEur(ps.totalCents) },
     { label: "Accettati", value: formatEur(ps.acceptedCents), sub: `${ps.byStatus.accepted ?? 0} preventivi` },
     { label: "Fatturato registrato", value: formatEur((billings.data ?? []).reduce((n, b) => n + Number(b.amount_cents), 0)), sub: "importi realmente fatturati" },
-    { label: "Rifiutati / scaduti", value: String((ps.byStatus.rejected ?? 0) + (ps.byStatus.expired ?? 0)), sub: `${ps.byStatus.rejected ?? 0} rifiutati` },
+    { label: "Persi / chiusi", value: String((ps.byStatus.rejected ?? 0) + (ps.byStatus.expired ?? 0)), sub: `${ps.byStatus.rejected ?? 0} persi` },
     { label: "In attesa", value: String((ps.byStatus.sent ?? 0) + (ps.byStatus.draft ?? 0)), sub: `${ps.byStatus.sent ?? 0} inviati · ${ps.byStatus.draft ?? 0} bozze` },
     { label: "Conversione", value: ps.conversionPct === null ? "—" : `${ps.conversionPct}%`, sub: ps.decided ? `su ${ps.decided} decisi` : "nessun preventivo deciso" },
     { label: "Nuovi clienti", value: String(acquiredTotal), sub: "nel periodo" },
@@ -329,7 +330,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             {statuses.map((st) => (
               <li key={st} className="grid grid-cols-[90px_1fr_auto] items-center gap-3 text-sm">
                 <span>{QUOTE_STATUS_LABEL[st]}</span>
-                <span className="h-2 rounded-sm bg-line"><span className="block h-2 rounded-sm bg-primary" style={{ width: `${(count(st) / maxCount) * 100}%` }} /></span>
+                <span className="h-2 rounded-sm bg-line"><span className={`block h-2 rounded-sm ${quoteStatusBar(st)}`} style={{ width: `${(count(st) / maxCount) * 100}%` }} /></span>
                 <span className="text-muted">{count(st)} · {formatEur(sum(st))}</span>
               </li>
             ))}

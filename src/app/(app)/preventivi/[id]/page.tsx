@@ -18,6 +18,7 @@ import { RemoveButton } from "@/components/ui/remove-button";
 import { formatEur } from "@/lib/money";
 import { PricePanel } from "@/modules/prezzi/ui/price-panel";
 import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
+import { QuoteStatusMenu } from "@/modules/preventivi/ui/status-menu";
 
 const NEXT: Record<QuoteStatus, QuoteStatus[]> = {
   draft: ["sent"], sent: ["accepted", "rejected", "expired", "draft"], accepted: [], rejected: ["draft"], expired: ["draft"],
@@ -62,7 +63,7 @@ export default async function QuotePage({ params, searchParams }: { params: Prom
         <Card>
           <dl className="mb-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
             <div><dt className="text-muted">Cliente</dt><dd>{customer?.deleted_at ? <span className="text-muted">{customer.name} (cliente rimosso)</span> : <Link className="text-primary hover:underline" href={`/clienti/${quote.customer_id}`}>{customer?.name}</Link>}</dd></div>
-            <div><dt className="text-muted">Stato</dt><dd><StatusBadge status={quote.status} /></dd></div>
+            <div><dt className="text-muted">Stato</dt><dd>{canWrite && quote.status !== "accepted" ? <QuoteStatusMenu id={id} status={quote.status} number={quote.number} /> : <StatusBadge status={quote.status} />}</dd></div>
             <div><dt className="text-muted">Emissione</dt><dd>{new Date(quote.issue_date).toLocaleDateString("it-IT")}</dd></div>
             <div><dt className="text-muted">Follow-up</dt><dd>{quote.follow_up_date ? new Date(quote.follow_up_date).toLocaleDateString("it-IT") : "—"}</dd></div>
             {shownFields.map((d) => <div key={d.key}><dt className="text-muted">{d.label}</dt><dd>{displayValue(d, found.quote.custom_values?.[d.key])}</dd></div>)}
@@ -95,7 +96,7 @@ export default async function QuotePage({ params, searchParams }: { params: Prom
               {NEXT[quote.status].map((s) => (
                 <form key={s} action={changeQuoteStatusAction.bind(null, id)}>
                   <input type="hidden" name="status" value={s} />
-                  <Button variant="outline" size="sm">{s === "draft" ? "Riporta in bozza" : `Segna ${QUOTE_STATUS_LABEL[s].toLowerCase()}`}</Button>
+                  <Button variant="outline" size="sm">{s === "draft" ? "Riporta in preparazione" : `Segna ${QUOTE_STATUS_LABEL[s].toLowerCase()}`}</Button>
                 </form>
               ))}
             </div>

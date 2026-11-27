@@ -15,6 +15,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { RemoveButton } from "@/components/ui/remove-button";
 import { fmtDateTime, fmtTime, utcToZonedParts } from "@/lib/datetime";
 import { isUuid } from "@/lib/ids";
+import { StatusChip } from "@/components/ui/status-chip";
 
 export default async function AppointmentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -53,7 +54,7 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
         } />
       {toClose && <div className="mb-4"><Alert>L&apos;appuntamento è passato e non è ancora stato chiuso: segnalo come completato o annullalo.</Alert></div>}
       <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-        <Badge data-testid="appointment-status">{APPOINTMENT_STATUS_LABEL[status]}</Badge>
+        <StatusChip data-testid="appointment-status" tone={status === "completed" ? "success" : status === "cancelled" ? "neutral" : "info"}>{APPOINTMENT_STATUS_LABEL[status]}</StatusChip>
         {a.assignee_id && <Badge>Responsabile: {names.get(a.assignee_id as string) ?? "—"}</Badge>}
         {(cust as { archived_at?: string | null } | null)?.archived_at && <Badge>Cliente archiviato</Badge>}
       </div>

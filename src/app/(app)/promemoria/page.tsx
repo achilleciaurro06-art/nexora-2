@@ -8,7 +8,7 @@ import { listAgenda, listTaskTypes } from "@/modules/agenda/queries";
 import { AGENDA_KIND_LABEL, UPCOMING_DAYS, agendaCounts, applyFilters, bucketAgenda, needsAction, type AgendaItem, type View } from "@/modules/agenda/agenda";
 import { completeItemAction } from "@/modules/agenda/actions";
 import { QuickReschedule } from "@/modules/agenda/ui/quick-reschedule";
-import { FOLLOW_UP_LABEL, type FollowUpStatus } from "@/modules/followup/states";
+import { type FollowUpStatus } from "@/modules/followup/states";
 import { PRIORITY_LABEL } from "@/modules/attivita/schemas";
 import { Badge, Card, PageHeader } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -16,6 +16,9 @@ import { Select } from "@/components/ui/input";
 import { fmtDay, fmtTime, todayIn } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 import { AgendaNav } from "@/components/layout/agenda-nav";
+import { StatusChip } from "@/components/ui/status-chip";
+import { FollowUpBadge } from "@/modules/followup/ui/follow-up-status";
+import { AlertTriangle, CalendarClock } from "lucide-react";
 
 export const metadata = { title: "Promemoria" };
 const TABS: { key: View; label: string; slug: string }[] = [
@@ -106,9 +109,9 @@ export default async function RemindersPage({ searchParams }: { searchParams: Pr
                     <p className="flex flex-wrap items-center gap-2">
                       <Badge>{i.kind === "task" && i.type_key === "call" ? "Telefonata" : AGENDA_KIND_LABEL[i.kind]}</Badge>
                       <Link className="truncate font-medium text-primary hover:underline" href={i.href}>{i.title}</Link>
-                      {urgent && <Badge className="border-danger text-danger">Urgente</Badge>}
-                      {i.is_open && (action ? <Badge className="border-danger text-danger">Da fare ora</Badge> : <Badge>Programmato</Badge>)}
-                      {i.kind === "follow_up" && <Badge>{FOLLOW_UP_LABEL[i.status as FollowUpStatus]}</Badge>}
+                      {urgent && <StatusChip tone="danger" icon={AlertTriangle}>Urgente</StatusChip>}
+                      {i.is_open && (action ? <StatusChip tone="warning">Da fare ora</StatusChip> : <StatusChip tone="info" icon={CalendarClock}>Programmato</StatusChip>)}
+                      {i.kind === "follow_up" && <FollowUpBadge status={i.status as FollowUpStatus} />}
                     </p>
                     <p className="text-xs text-muted">
                       <span className={overdue ? "font-medium text-danger" : ""}><When i={i} /></span>

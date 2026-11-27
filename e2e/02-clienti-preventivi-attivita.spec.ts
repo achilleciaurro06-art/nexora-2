@@ -77,7 +77,7 @@ test("preventivo: righe, sconto, IVA, totali e numerazione", async ({ page }) =>
   quoteNumber = /Preventivo (\d{4}\/\d{4})/.exec(heading ?? "")?.[1] ?? "";
   expect(quoteNumber).toMatch(/^\d{4}\/0001$/);
   await expect(page.getByText(/1\.098,00/).first()).toBeVisible();
-  await expect(page.getByText("Bozza").first()).toBeVisible();
+  await expect(page.locator("[data-status='draft']").first()).toContainText("In preparazione");
 });
 
 test("PDF: scarica un file vero, senza finestra di stampa", async ({ page }) => {
@@ -93,7 +93,7 @@ test("PDF: scarica un file vero, senza finestra di stampa", async ({ page }) => 
 test("cambio di stato e blocco della modifica dopo l'invio", async ({ page }) => {
   await page.goto(quoteUrl);
   await page.getByRole("button", { name: "Segna inviato" }).click();
-  await expect(page.getByText("Inviato").first()).toBeVisible();
+  await expect(page.locator("[data-status='sent']").first()).toContainText("Inviato");
   await expect(page.getByRole("link", { name: "Modifica" })).toHaveCount(0);
   await page.goto(`${quoteUrl}/modifica`);
   await expect(page).toHaveURL(quoteUrl); // non più modificabile: rimanda alla scheda
