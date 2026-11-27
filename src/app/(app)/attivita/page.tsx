@@ -15,6 +15,7 @@ import { Input, Select } from "@/components/ui/input";
 import { fmtDate, fmtDateTime, fmtLongDay, utcToZonedParts } from "@/lib/datetime";
 import { isUuid } from "@/lib/ids";
 import { cn } from "@/lib/utils";
+import { AgendaNav } from "@/components/layout/agenda-nav";
 
 export const metadata = { title: "Attività" };
 
@@ -137,6 +138,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
 
   return (
     <>
+      <AgendaNav active="attivita" />
       <PageHeader title="Attività" description="Attività operative e commerciali. Gli appuntamenti, le chiamate e i follow-up hanno le loro sezioni; il centro Promemoria li riunisce."
         actions={
           <div className="flex flex-wrap gap-2">

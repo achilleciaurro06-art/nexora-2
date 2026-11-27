@@ -531,3 +531,37 @@ test("dashboard: la chat del Copilot è in pagina (riquadro in alto), senza pann
   await page.goto("/clienti");
   await expect(page.getByTestId("copilot-open")).toBeVisible();
 });
+
+/** PDF minimo con N oggetti pagina in chiaro (il numero di pagine è letto prima di qualsiasi chiamata AI). */
+const pdfWithPages = (pages: number, tag: string) =>
+  Buffer.from(`%PDF-1.4\n2 0 obj << /Type /Pages /Count ${pages} >> endobj\n${Array.from({ length: pages }, (_, i) => `${i + 3} 0 obj << /Type /Page /Parent 2 0 R >> endobj`).join("\n")}\n% ${tag}\n%%EOF`);
+
+test("analisi PDF: oltre 25 pagine rifiutato PRIMA di prenotare crediti; entro il limite la prenotazione tiene conto delle pagine", async ({ page }) => {
+  const org = ORG();
+  const reservations = () => Number(sql(`select count(*) from public.ai_reservations where organization_id = '${org}'`));
+  const usageRows = () => Number(sql(`select count(*) from public.ai_usage where organization_id = '${org}'`));
+  const before = { used: used(), reservations: reservations(), usage: usageRows() };
+
+  // 26 pagine: errore chiaro, nessuna prenotazione, nessun consumo, nessuna riga d'uso
+  await page.goto("/documenti");
+  await page.locator("#file").setInputFiles({ name: "lungo-26.pdf", mimeType: "application/pdf", buffer: pdfWithPages(26, `lungo-${randomUUID()}`) });
+  await page.getByRole("button", { name: "Carica", exact: true }).click();
+  await expect(page.getByText("Documento caricato")).toBeVisible();
+  await page.getByRole("row", { name: /lungo-26\.pdf/ }).getByRole("button", { name: "Analizza con AI" }).click();
+  await expect(page.getByText(/26 pagine.*al massimo 25/)).toBeVisible();
+  expect(reservations()).toBe(before.reservations);
+  expect(usageRows()).toBe(before.usage);
+  expect(used()).toBe(before.used);
+
+  // 5 pagine: l'analisi parte e la prenotazione è almeno 5 × 1.500 token (più testo e uscita), non più il vecchio forfait di 4.000
+  await page.goto("/documenti");
+  await page.locator("#file").setInputFiles({ name: "breve-5.pdf", mimeType: "application/pdf", buffer: pdfWithPages(5, `breve-${randomUUID()}`) });
+  await page.getByRole("button", { name: "Carica", exact: true }).click();
+  await expect(page.getByText("Documento caricato")).toBeVisible();
+  await page.getByRole("row", { name: /breve-5\.pdf/ }).getByRole("button", { name: "Analizza con AI" }).click();
+  await expect.poll(reservations, { timeout: 15_000 }).toBe(before.reservations + 1);
+  const reserved = Number(sql(`select reserved_tokens from public.ai_reservations where organization_id = '${org}' and feature = 'document_analysis' order by created_at desc limit 1`));
+  expect(reserved).toBeGreaterThanOrEqual(5 * 1500 + 2500);
+  // la prenotazione si chiude (conteggiata o rilasciata): nulla resta trattenuto
+  await expect.poll(() => sql(`select count(*) from public.ai_reservations where organization_id = '${org}' and status = 'reserved'`), { timeout: 15_000 }).toBe("0");
+});

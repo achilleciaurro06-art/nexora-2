@@ -10,7 +10,8 @@ export type AiRequest = {
   /** Allegato opzionale (es. PDF) passato come dato, mai come istruzione. */
   attachment?: { mimeType: string; data: Uint8Array };
 };
-export type AiResponse = { text: string; model: string; inputTokens: number; outputTokens: number };
+/** `usageSource`: da dove arrivano i token — «total» (totalTokenCount del provider), «parts» (somma dei campi), «none» (non comunicati). */
+export type AiResponse = { text: string; model: string; inputTokens: number; outputTokens: number; usageSource?: "total" | "parts" | "none" };
 
 /** Interfaccia indipendente dal provider: Gemini è il primo adapter. */
 export interface AiProvider {

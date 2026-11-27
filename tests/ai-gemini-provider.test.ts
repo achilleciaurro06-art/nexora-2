@@ -21,8 +21,24 @@ describe("Gemini adapter (SDK mocked: verifies OUR retry/fallback logic, not the
   });
   it("returns text, model and the provider's real token usage", async () => {
     generateContent.mockResolvedValue({ text: "risposta", usageMetadata: { promptTokenCount: 11, candidatesTokenCount: 7 } });
-    expect(await new GeminiProvider().generate(req)).toEqual({ text: "risposta", model: "model-main", inputTokens: 11, outputTokens: 7 });
+    // senza totalTokenCount: fallback esplicito sulla somma dei campi (usageSource «parts»)
+    expect(await new GeminiProvider().generate(req)).toEqual({ text: "risposta", model: "model-main", inputTokens: 11, outputTokens: 7, usageSource: "parts" });
     expect(generateContent).toHaveBeenCalledTimes(1);
+  });
+  it("counts the model's thinking tokens (inside totalTokenCount) without adding them twice", async () => {
+    generateContent.mockResolvedValue({ text: "r", usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 50, thoughtsTokenCount: 400, totalTokenCount: 550 } });
+    const r = await new GeminiProvider().generate(req);
+    expect(r).toMatchObject({ inputTokens: 100, outputTokens: 450, usageSource: "total" });
+    expect(r.inputTokens + r.outputTokens).toBe(550);
+  });
+  it("an inconsistent total (below the sum of the fields) never loses the thinking tokens and is logged without content", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    generateContent.mockResolvedValue({ text: "SEGRETO-DEL-CLIENTE", usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 50, thoughtsTokenCount: 400, totalTokenCount: 150 } });
+    const r = await new GeminiProvider().generate(req);
+    expect(r).toMatchObject({ outputTokens: 450, usageSource: "parts" });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("SEGRETO");
+    warn.mockRestore();
   });
   it("auth errors (401/403) stop immediately: no retries, no fallback model, no duplicate calls", async () => {
     generateContent.mockRejectedValue(httpErr(403));

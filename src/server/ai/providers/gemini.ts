@@ -2,6 +2,7 @@ import "server-only";
 import { GoogleGenAI } from "@google/genai";
 import { env } from "@/server/env";
 import { AiProviderError, type AiProvider, type AiRequest, type AiResponse } from "../provider";
+import { mapGeminiUsage } from "./gemini-usage";
 
 const RETRY_DELAYS_MS = [700, 1800];
 const CALL_TIMEOUT_MS = 20_000;
@@ -54,12 +55,10 @@ export class GeminiProvider implements AiProvider {
               ...(req.jsonSchema ? { responseMimeType: "application/json", responseJsonSchema: req.jsonSchema } : {}),
             },
           });
-          return {
-            text: res.text ?? "",
-            model,
-            inputTokens: res.usageMetadata?.promptTokenCount ?? 0,
-            outputTokens: res.usageMetadata?.candidatesTokenCount ?? 0,
-          };
+          // conteggio a partire dal totale del provider (ragionamento e strumenti inclusi, senza doppie somme): vedi gemini-usage.ts
+          const usage = mapGeminiUsage(res.usageMetadata);
+          if (usage.inconsistent) console.warn(`gemini ${model}: totalTokenCount inferiore alla somma dei campi, uso la somma dei campi`);
+          return { text: res.text ?? "", model, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, usageSource: usage.source };
         } catch (err) {
           const status = statusOf(err);
           lastStatus = status;

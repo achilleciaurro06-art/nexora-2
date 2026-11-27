@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/input";
 import { dayRangeUtc, fmtDate, fmtTime, todayIn, utcToZonedParts } from "@/lib/datetime";
 import { isUuid } from "@/lib/ids";
 import { cn } from "@/lib/utils";
+import { AgendaNav } from "@/components/layout/agenda-nav";
 
 export const metadata = { title: "Appuntamenti" };
 type Row = { id: string; title: string; starts_at: string; ends_at: string; status: string; location: string | null; assignee_id: string | null; customer_id: string | null; customers: { name: string } | { name: string }[] | null };
@@ -105,6 +106,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
 
   return (
     <>
+      <AgendaNav active="appuntamenti" />
       <PageHeader title="Appuntamenti" description="Calendario e elenco degli appuntamenti con i clienti. Gli orari sono quelli dell'azienda (Europa/Roma)."
         actions={canWrite ? <Link href={`/appuntamenti/nuovo${!list && sp.data ? `?data=${date}` : ""}`} className={buttonVariants()}>Nuovo appuntamento</Link> : null} />
       <div className="mb-4 flex flex-wrap items-center gap-2">

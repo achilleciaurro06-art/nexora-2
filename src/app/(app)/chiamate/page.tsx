@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { dayRangeUtc, fmtDateTime } from "@/lib/datetime";
 import { isUuid } from "@/lib/ids";
+import { AgendaNav } from "@/components/layout/agenda-nav";
 
 export const metadata = { title: "Chiamate" };
 
@@ -33,6 +34,7 @@ export default async function CallsPage({ searchParams }: { searchParams: Promis
   const one = <T,>(v: T | T[] | null) => (Array.isArray(v) ? (v[0] ?? null) : v);
   return (
     <>
+      <AgendaNav active="chiamate" />
       <PageHeader title="Chiamate" description="Registro manuale delle telefonate con i clienti (non è collegato a un centralino)."
         actions={canWrite ? <Link href="/chiamate/nuova" className={buttonVariants()}>Registra chiamata</Link> : null} />
       {sp.registrata && <div className="mb-4"><Alert kind="success">Chiamata registrata.</Alert></div>}

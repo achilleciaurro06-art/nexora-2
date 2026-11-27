@@ -113,10 +113,18 @@ export function ChatPanel({ conversationId: initialId, initialMessages, initialP
     <div className="space-y-3">
       <div className={`${compact ? "max-h-[48dvh]" : "max-h-[55dvh]"} min-h-32 space-y-3 overflow-y-auto pr-1`} aria-live="polite" data-testid="chat-log">
         {messages.length === 0 && !pending && (
-          <div className="space-y-2">
-            <p className="text-sm text-muted">Chiedimi di clienti, preventivi, fatturato registrato, attività, email e catalogo: rispondo con i dati reali della tua azienda.</p>
+          <div className="space-y-3" data-testid="copilot-empty">
+            <p className="text-sm font-medium">Cosa posso fare per te</p>
+            {!compact && (
+              <ul className="grid gap-2 text-xs text-muted sm:grid-cols-3">
+                <li className="rounded-md border border-line p-2.5"><span className="block font-medium text-foreground">Capire</span>Rispondo con i dati reali: clienti, preventivi, fatturato, attività ed email.</li>
+                <li className="rounded-md border border-line p-2.5"><span className="block font-medium text-foreground">Preparare</span>Scrivo bozze di email, solleciti e riepiloghi di appuntamenti.</li>
+                <li className="rounded-md border border-line p-2.5"><span className="block font-medium text-foreground">Agire</span>Propongo attività e promemoria: si crea qualcosa solo dopo la tua conferma.</li>
+              </ul>
+            )}
+            {canUse && <p className="text-xs text-muted">Tocca un suggerimento per iniziare, oppure scrivi tu la domanda qui sotto.</p>}
             <div className="flex flex-wrap gap-2">
-              {suggestions.map((s) => canUse && <button key={s} type="button" onClick={() => void send(s)} className="rounded-full border border-border px-3 py-1 text-left text-xs hover:bg-border/40" data-testid="suggestion-chip">{s}</button>)}
+              {suggestions.map((s) => canUse && <button key={s} type="button" onClick={() => void send(s)} className="nx-t rounded-full border border-border px-3 py-1.5 text-left text-xs hover:border-primary/40 hover:bg-primary/[0.05]" data-testid="suggestion-chip">{s}</button>)}
             </div>
           </div>
         )}

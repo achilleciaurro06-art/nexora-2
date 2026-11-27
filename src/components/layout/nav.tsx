@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, CalendarDays, ChevronsLeft, ChevronsRight, FileText, FolderOpen, LayoutDashboard, Mail, MoreHorizontal, Package, Phone, Settings, ShieldCheck, Sparkles, Users, X, CheckSquare, Clock, Repeat, BellRing } from "lucide-react";
+import { Bell, CalendarDays, ChevronsLeft, ChevronsRight, FileText, FolderOpen, LayoutDashboard, Mail, MoreHorizontal, Phone, Settings, ShieldCheck, Sparkles, Users, X, CheckSquare, Clock, Repeat, BellRing } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo, LogoMark } from "@/components/brand/logo";
 
@@ -12,7 +12,6 @@ const MAIN: Item[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/clienti", label: "Clienti", icon: Users },
   { href: "/preventivi", label: "Preventivi", icon: FileText },
-  { href: "/catalogo", label: "Catalogo", icon: Package },
   { href: "/email", label: "Email", icon: Mail },
   { href: "/documenti", label: "Documenti", icon: FolderOpen },
 ];
@@ -109,7 +108,7 @@ export function BottomNav({ isPlatformAdmin, labels = {}, unread, userSlot }: { 
   const setOpen = (v: boolean) => setOpenAt(v ? path : null);
   const primary: Item[] = [MAIN[0]!, MAIN[1]!, MAIN[2]!, { href: "/promemoria", label: "Agenda", icon: CalendarDays }];
   const agendaOn = AGENDA.some((a) => on(path, a.href));
-  const more: Item[] = [MAIN[3]!, MAIN[4]!, MAIN[5]!, ...AGENDA.slice(1), COPILOT, { href: "/notifiche", label: "Notifiche", icon: Bell }, SETTINGS, ...(isPlatformAdmin ? [ADMIN] : [])];
+  const more: Item[] = [MAIN[3]!, MAIN[4]!, ...AGENDA.slice(1), COPILOT, { href: "/notifiche", label: "Notifiche", icon: Bell }, SETTINGS, ...(isPlatformAdmin ? [ADMIN] : [])];
   const moreOn = more.some((m) => on(path, m.href)) && !agendaOn;
   return (
     <>

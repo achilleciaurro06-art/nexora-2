@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { runAi } from "@/server/ai/run";
+import { estimateAttachment } from "@/server/ai/attachment-estimate";
 import { ANALYZABLE_MIMES } from "@/lib/documents";
 import { DocumentReadError, extractDocumentText } from "./extract-text";
 import {
@@ -62,6 +63,12 @@ export async function analyzeDocument(args: { db: SupabaseClient; orgId: string;
   const { data: blob, error: dlError } = await db.storage.from("documents").download(doc.storage_path as string);
   if (dlError || !blob) return fail("File non leggibile");
   const bytes = new Uint8Array(await blob.arrayBuffer());
+
+  // PDF/immagini: se superano i limiti (PDF oltre 25 pagine, immagine troppo grande) si rifiutano QUI, prima di prenotare crediti e di chiamare il provider
+  if (mime === "application/pdf" || mime.startsWith("image/")) {
+    const est = estimateAttachment(mime, bytes);
+    if (est.tooLarge) return fail(est.tooLarge.message);
+  }
 
   // Word/Excel: testo estratto in locale (gratis) e inviato come dato; PDF/immagini: allegato nativo
   let text: string | null = null;

@@ -13,6 +13,7 @@ const form = (page: Page, buttonName: string) => page.locator("form").filter({ h
 
 test("creazione di un cliente", async ({ page }) => {
   await page.goto("/clienti/nuovo");
+  await page.getByText("Altri dettagli").click(); // sezione richiudibile: i dettagli non essenziali
   await page.getByLabel("Ragione sociale / Nome *").fill("Rossi Costruzioni S.r.l.");
   await page.getByLabel("Partita IVA").fill("01234567890");
   await page.getByLabel("Email").fill("info@rossi-costruzioni.it");

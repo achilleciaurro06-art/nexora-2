@@ -22,7 +22,7 @@ import { DashboardChat } from "@/modules/copilot/ui/dashboard-chat";
 import { DigitalTexture } from "@/components/brand/digital-texture";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Bell, ChevronRight, FileText, Plus, Target, Users, Wallet } from "lucide-react";
+import { Bell, ChevronRight, FileText, Plus, Target, Upload, Users, Wallet } from "lucide-react";
 
 export const metadata = { title: "Dashboard" };
 
@@ -148,13 +148,81 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   className={`nx-t rounded-sm px-2.5 py-1.5 text-xs font-medium ${r.key === range.key ? "bg-white text-carbon" : "text-slate-200 hover:bg-white/10"}`}>{r.label}</Link>
               ))}
             </nav>
-            {canWriteData && <Link href="/preventivi/nuovo" className={buttonVariants({ size: "default" })}><Plus className="size-4" />Nuovo preventivo</Link>}
+            {canWriteData && (
+              <>
+                <Link href="/clienti/nuovo" className={`${buttonVariants({ size: "default", variant: "ghost" })} border border-white/20 text-white hover:bg-white/10`}><Users className="size-4" />Nuovo cliente</Link>
+                <Link href="/documenti" className={`${buttonVariants({ size: "default", variant: "ghost" })} border border-white/20 text-white hover:bg-white/10`}><Upload className="size-4" />Carica documento</Link>
+                <Link href="/preventivi/nuovo" className={buttonVariants({ size: "default" })}><Plus className="size-4" />Nuovo preventivo</Link>
+              </>
+            )}
             <Link href="/notifiche" aria-label="Apri le notifiche" className="nx-t relative rounded-md border border-white/15 p-2.5 text-slate-200 hover:bg-white/10"><Bell className="size-[18px]" />{(unreadCount ?? 0) > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-sm bg-sky px-1 text-center text-[10px] font-bold text-carbon">{unreadCount}</span>}</Link>
             <Link href="/impostazioni/profilo" aria-label="Apri il profilo" className="nx-t rounded-full ring-2 ring-white/20 hover:ring-sky/70"><Avatar name={ctx.fullName ?? ctx.email} size={36} /></Link>
           </div>
         </div>
       </header>
 
+      <section aria-label="Il lavoro di oggi" className="mb-8" data-testid="today-work">
+        <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Cosa fare oggi</h2><Link className="text-sm font-medium text-primary hover:underline" href="/promemoria">Apri i promemoria</Link></div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Link href="/promemoria?vista=oggi"><Card className="nx-t h-full p-4 hover:border-primary/40"><p className="text-sm text-muted">Da completare oggi</p><p className="mt-1 text-xl font-semibold" data-testid="dash-today">{ac.today}</p><p className="mt-0.5 text-xs text-muted">{mineToday} assegnati a te</p></Card></Link>
+          <Link href="/promemoria?vista=ritardo"><Card className={ac.overdue > 0 ? "nx-t h-full border-danger/50 p-4" : "nx-t h-full p-4 hover:border-primary/40"}><p className="text-sm text-muted">Scaduti</p><p className={ac.overdue > 0 ? "mt-1 text-xl font-semibold text-danger" : "mt-1 text-xl font-semibold"} data-testid="dash-overdue">{ac.overdue}</p><p className="mt-0.5 text-xs text-muted">{ac.urgent} urgenti</p></Card></Link>
+          <Link href="/followup"><Card className="nx-t h-full p-4 hover:border-primary/40"><p className="text-sm text-muted">Follow-up da effettuare</p><p className="mt-1 text-xl font-semibold" data-testid="dash-followups">{followUpsDue}</p><p className="mt-0.5 text-xs text-muted">con data di oggi o passata</p></Card></Link>
+          <Link href="/appuntamenti?vista=elenco"><Card className="nx-t h-full p-4 hover:border-primary/40"><p className="text-sm text-muted">Appuntamenti (7 giorni)</p><p className="mt-1 text-xl font-semibold" data-testid="dash-appointments">{nextApps.length}</p><p className="mt-0.5 text-xs text-muted">{nextApps[0] ? `Prossimo: ${fmtDay(nextApps[0].when_date!)} ${fmtTime(nextApps[0].when_at!)}` : "nessuno in programma"}</p></Card></Link>
+        </div>
+        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <Card>
+            <h3 className="mb-2 text-sm font-semibold">Prossimi appuntamenti</h3>
+            {nextApps.length === 0 ? <p className="text-sm text-muted">Nessun appuntamento nei prossimi 7 giorni.</p> : (
+              <ul className="space-y-1.5 text-sm">{nextApps.map((a) => <li key={a.id} className="flex justify-between gap-3"><Link className="truncate text-primary hover:underline" href={a.href}>{a.title}</Link><span className="shrink-0 text-muted">{fmtDay(a.when_date!)} {fmtTime(a.when_at!)}</span></li>)}</ul>
+            )}
+          </Card>
+          <Card data-testid="workload">
+            <h3 className="mb-2 text-sm font-semibold">Carico di lavoro (elementi aperti per responsabile)</h3>
+            {workloadRows.length === 0 ? <p className="text-sm text-muted">Nessun elemento aperto.</p> : (
+              <ul className="space-y-1.5 text-sm">{workloadRows.map((w) => <li key={w.name} className="flex justify-between gap-3"><span>{w.name}</span><span className="text-muted">{w.n}</span></li>)}</ul>
+            )}
+          </Card>
+        </div>
+      </section>
+
+      <section aria-label="Richiedono attenzione" className="mb-8" data-testid="attention">
+        <h2 className="mb-3 text-lg font-semibold">Richiedono attenzione</h2>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <Card>
+          <div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">Follow-up imminenti</h2><Link className="text-sm font-medium text-primary hover:underline" href="/promemoria">Tutti</Link></div>
+          {(followUpList.data ?? []).length === 0 ? <p className="text-sm text-muted">Nessun follow-up in scadenza nei prossimi 7 giorni.</p> : (
+            <ul className="space-y-2 text-sm">
+              {(followUpList.data ?? []).map((f) => {
+                const c = Array.isArray(f.customers) ? f.customers[0] : f.customers;
+                const late = (f.follow_up_date as string) < isoDayOffset(0);
+                return (
+                  <li key={f.id as string} className="flex justify-between gap-3">
+                    <Link className="truncate hover:underline" href={`/preventivi/${f.id}`}>{f.number as string}{c ? ` · ${(c as { name: string }).name}` : ""}</Link>
+                    <span className={late ? "font-medium text-danger" : "text-muted"}>{new Date(f.follow_up_date as string).toLocaleDateString("it-IT")}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+        <Card>
+          <h2 className="mb-1 font-semibold">Clienti da ricontattare</h2>
+          <p className="mb-3 text-xs text-muted">Nessuna interazione registrata da oltre 60 giorni.</p>
+          {recontactRows.length === 0 ? <p className="text-sm text-muted">Nessun cliente da ricontattare.</p> : (
+            <ul className="space-y-2 text-sm">
+              {recontactRows.map((c) => (
+                <li key={c.customer_id} className="flex justify-between gap-3">
+                  <Link className="truncate text-primary hover:underline" href={`/clienti/${c.customer_id}`}>{c.name}</Link>
+                  <span className="shrink-0 text-muted">{Math.floor((now.getTime() - new Date(c.last_activity).getTime()) / 86_400_000)} gg{Number(c.open_quotes) > 0 ? ` · ${c.open_quotes} aperti` : ""}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+        </div>
+      </section>
+
+      <h2 className="mb-3 text-lg font-semibold">Andamento dell&apos;attività</h2>
       {/* indicatori principali */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {mainKpis.map((k) => {
@@ -201,29 +269,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       {snapshot && <AiSection summary={buildSummary(snapshot)} insights={insights} seenBefore={seenBefore} canWrite={canWriteData} canUseAi={can(ctx.org.role, "ai:use")} />}
 
-      <section aria-label="Il lavoro di oggi" className="mt-8" data-testid="today-work">
-        <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Il lavoro di oggi</h2><Link className="text-sm font-medium text-primary hover:underline" href="/promemoria">Apri i promemoria</Link></div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Link href="/promemoria?vista=oggi"><Card className="nx-t h-full p-4 hover:border-primary/40"><p className="text-sm text-muted">Da completare oggi</p><p className="mt-1 text-xl font-semibold" data-testid="dash-today">{ac.today}</p><p className="mt-0.5 text-xs text-muted">{mineToday} assegnati a te</p></Card></Link>
-          <Link href="/promemoria?vista=ritardo"><Card className={ac.overdue > 0 ? "nx-t h-full border-danger/50 p-4" : "nx-t h-full p-4 hover:border-primary/40"}><p className="text-sm text-muted">Scaduti</p><p className={ac.overdue > 0 ? "mt-1 text-xl font-semibold text-danger" : "mt-1 text-xl font-semibold"} data-testid="dash-overdue">{ac.overdue}</p><p className="mt-0.5 text-xs text-muted">{ac.urgent} urgenti</p></Card></Link>
-          <Link href="/followup"><Card className="nx-t h-full p-4 hover:border-primary/40"><p className="text-sm text-muted">Follow-up da effettuare</p><p className="mt-1 text-xl font-semibold" data-testid="dash-followups">{followUpsDue}</p><p className="mt-0.5 text-xs text-muted">con data di oggi o passata</p></Card></Link>
-          <Link href="/appuntamenti?vista=elenco"><Card className="nx-t h-full p-4 hover:border-primary/40"><p className="text-sm text-muted">Appuntamenti (7 giorni)</p><p className="mt-1 text-xl font-semibold" data-testid="dash-appointments">{nextApps.length}</p><p className="mt-0.5 text-xs text-muted">{nextApps[0] ? `Prossimo: ${fmtDay(nextApps[0].when_date!)} ${fmtTime(nextApps[0].when_at!)}` : "nessuno in programma"}</p></Card></Link>
-        </div>
-        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
-          <Card>
-            <h3 className="mb-2 text-sm font-semibold">Prossimi appuntamenti</h3>
-            {nextApps.length === 0 ? <p className="text-sm text-muted">Nessun appuntamento nei prossimi 7 giorni.</p> : (
-              <ul className="space-y-1.5 text-sm">{nextApps.map((a) => <li key={a.id} className="flex justify-between gap-3"><Link className="truncate text-primary hover:underline" href={a.href}>{a.title}</Link><span className="shrink-0 text-muted">{fmtDay(a.when_date!)} {fmtTime(a.when_at!)}</span></li>)}</ul>
-            )}
-          </Card>
-          <Card data-testid="workload">
-            <h3 className="mb-2 text-sm font-semibold">Carico di lavoro (elementi aperti per responsabile)</h3>
-            {workloadRows.length === 0 ? <p className="text-sm text-muted">Nessun elemento aperto.</p> : (
-              <ul className="space-y-1.5 text-sm">{workloadRows.map((w) => <li key={w.name} className="flex justify-between gap-3"><span>{w.name}</span><span className="text-muted">{w.n}</span></li>)}</ul>
-            )}
-          </Card>
-        </div>
-      </section>
 
       {/* area inferiore: ultimi preventivi, clienti recenti, prossime attività */}
       <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -289,37 +334,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               </li>
             ))}
           </ul>
-        </Card>
-        <Card>
-          <div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">Follow-up imminenti</h2><Link className="text-sm font-medium text-primary hover:underline" href="/promemoria">Tutti</Link></div>
-          {(followUpList.data ?? []).length === 0 ? <p className="text-sm text-muted">Nessun follow-up in scadenza nei prossimi 7 giorni.</p> : (
-            <ul className="space-y-2 text-sm">
-              {(followUpList.data ?? []).map((f) => {
-                const c = Array.isArray(f.customers) ? f.customers[0] : f.customers;
-                const late = (f.follow_up_date as string) < isoDayOffset(0);
-                return (
-                  <li key={f.id as string} className="flex justify-between gap-3">
-                    <Link className="truncate hover:underline" href={`/preventivi/${f.id}`}>{f.number as string}{c ? ` · ${(c as { name: string }).name}` : ""}</Link>
-                    <span className={late ? "font-medium text-danger" : "text-muted"}>{new Date(f.follow_up_date as string).toLocaleDateString("it-IT")}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Card>
-        <Card>
-          <h2 className="mb-1 font-semibold">Clienti da ricontattare</h2>
-          <p className="mb-3 text-xs text-muted">Nessuna interazione registrata da oltre 60 giorni.</p>
-          {recontactRows.length === 0 ? <p className="text-sm text-muted">Nessun cliente da ricontattare.</p> : (
-            <ul className="space-y-2 text-sm">
-              {recontactRows.map((c) => (
-                <li key={c.customer_id} className="flex justify-between gap-3">
-                  <Link className="truncate text-primary hover:underline" href={`/clienti/${c.customer_id}`}>{c.name}</Link>
-                  <span className="shrink-0 text-muted">{Math.floor((now.getTime() - new Date(c.last_activity).getTime()) / 86_400_000)} gg{Number(c.open_quotes) > 0 ? ` · ${c.open_quotes} aperti` : ""}</span>
-                </li>
-              ))}
-            </ul>
-          )}
         </Card>
         <Card>
           <h2 className="mb-3 font-semibold">Ultime operazioni</h2>

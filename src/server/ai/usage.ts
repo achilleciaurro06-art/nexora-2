@@ -38,4 +38,10 @@ export function estimateTokens(...texts: string[]): number {
   return Math.ceil(texts.reduce((n, t) => n + t.length, 0) / 3);
 }
 
+/** Stato della quota (solo lettura): serve a segnalare nei log un eventuale superamento dopo il conteggio reale. */
+export async function quotaStatus(orgId: string): Promise<{ used: number; limit: number } | null> {
+  const { data } = await createAdminClient().from("ai_quotas").select("tokens_used, monthly_token_limit").eq("organization_id", orgId).maybeSingle();
+  return data ? { used: Number(data.tokens_used), limit: Number(data.monthly_token_limit) } : null;
+}
+
 export const QUOTA_MESSAGE = "Crediti AI esauriti per questo mese: contatta l'amministratore per aumentare il limite.";

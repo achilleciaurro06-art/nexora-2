@@ -13,6 +13,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { fmtDay, todayIn } from "@/lib/datetime";
 import { isUuid } from "@/lib/ids";
+import { AgendaNav } from "@/components/layout/agenda-nav";
 
 export const metadata = { title: "Follow-up" };
 
@@ -41,6 +42,7 @@ export default async function FollowUpsPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
+      <AgendaNav active="followup" />
       <PageHeader title="Follow-up" description="Ricontatti commerciali con sei stati: da fare, programmato, in corso, in attesa, completato, annullato."
         actions={canWrite ? <Link href="/followup/nuovo" className={buttonVariants()}>Nuovo follow-up</Link> : null} />
       {overdueCount > 0 && <p className="mb-3 text-sm font-medium text-danger" role="status">{overdueCount} follow-up in ritardo in questo elenco.</p>}

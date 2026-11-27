@@ -19,3 +19,8 @@ Nessuna nuova obbligatoria. Opzionali: `AI_RATE_LIMIT_PER_10MIN`. Esistenti: `GE
 
 ## Limiti
 Streaming: arrivano in tempo reale gli stati di avanzamento, non i singoli token (il modello risponde in JSON). Costo in euro solo stimato e solo se il gestore imposta i prezzi. Insight email solo da caselle condivise. Nessuna previsione: le regole descrivono fatti misurati con soglie dichiarate.
+
+## Crediti: stima prima della chiamata e conteggio reale
+- **Stima** (`src/server/ai/attachment-estimate.ts`, `run.ts`): testo e istruzioni (≈ 3 caratteri/token) + schema JSON + uscita massima + allegato. PDF: 1.500 token a pagina, massimo 25 pagine; immagini: almeno 2.000 token, a riquadri (258 ciascuno) per le foto grandi, rifiutate oltre 10.000. Allegato oltre i limiti = rifiutato PRIMA di prenotare e di chiamare il provider (nessun addebito). Pagine non leggibili (stream compressi) = ipotesi di 60 KB a pagina e almeno una pagina ogni 400 KB. Le cifre sono ipotesi prudenti, non misure sul modello reale.
+- **Conteggio reale** (`providers/gemini-usage.ts`): ingresso = prompt + strumenti; con `totalTokenCount` coerente l'uscita = totale − ingresso (ragionamento incluso, nessuna doppia somma); totale mancante = somma dei campi (`usageSource: "parts"`); totale inferiore alla somma = si usano i campi e si registra un avviso.
+- **Sforamento**: se il consumo reale supera la prenotazione, resta registrato per intero (nessun consumo nascosto), `runAi` restituisce `overshoot` e scrive `ai_overshoot` nei log (con l'eventuale superamento del limite). Le richieste successive sono rifiutate dalla prenotazione fino al rinnovo mensile.

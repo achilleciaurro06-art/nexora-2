@@ -43,10 +43,27 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
           </div>
         } />
       <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <Card>
+        <div className="space-y-6">
+        {canWrite && (
+          <Card data-testid="doc-next-steps">
+            <h2 className="mb-1 font-medium">Cosa vuoi fare adesso?</h2>
+            <p className="mb-3 text-sm text-muted">{doc.customer_id ? "Azioni rapide già collegate al cliente di questo documento." : "Collega il documento a un cliente (qui sotto) per sbloccare le azioni rapide."}</p>
+            <div className="flex flex-wrap gap-2">
+              {(sugs ?? []).filter((x) => x.status === "pending").slice(0, 1).map((x) => (
+                <Link key={x.id as string} href={`/documenti/revisione/${x.id}`} className={buttonVariants({ size: "sm" })}>Rivedi la bozza di preventivo</Link>
+              ))}
+              <Link href={`/preventivi/nuovo${doc.customer_id ? `?cliente=${doc.customer_id}` : ""}`} className={buttonVariants({ variant: "outline", size: "sm" })}>Crea un preventivo</Link>
+              <Link href={`/attivita/nuova${doc.customer_id ? `?cliente=${doc.customer_id}` : ""}`} className={buttonVariants({ variant: "outline", size: "sm" })}>Crea un&apos;attività</Link>
+              <Link href={`/followup/nuovo${doc.customer_id ? `?cliente=${doc.customer_id}` : ""}`} className={buttonVariants({ variant: "outline", size: "sm" })}>Registra una scadenza</Link>
+            </div>
+            <p className="mt-3 text-xs text-muted">Il documento è già archiviato in modo privato: non serve altro per conservarlo.</p>
+          </Card>
+        )}
+        <Card id="collega">
           <MetadataForm action={updateDocumentMetadataAction.bind(null, id)} readOnly={!canWrite} customers={customers.map((c) => ({ id: c.id, name: c.name }))}
             doc={{ name: doc.name as string, description: doc.description as string | null, customerId: doc.customer_id as string | null }} />
         </Card>
+        </div>
         <div className="space-y-6">
           <Card>
             <h2 className="mb-2 font-medium">Collegamenti</h2>

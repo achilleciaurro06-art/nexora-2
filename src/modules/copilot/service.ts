@@ -138,7 +138,7 @@ export async function runCopilot(a: AgentInput): Promise<CopilotResult> {
       orgId: a.orgId, userId: a.userId, feature: "copilot", requestKey: `copilot:${a.requestId}:${step}`,
       req: { system, messages: [...a.history.slice(-8), { role: "user", content }], jsonSchema: STEP_JSON_SCHEMA, maxOutputTokens: MAX_OUTPUT },
     });
-    if (!out.ok) return { ok: false, error: out.error, kind: out.kind };
+    if (!out.ok) return { ok: false, error: out.error, kind: out.kind === "attachment" ? "provider" : out.kind }; // il Copilot non invia allegati
     calls++;
     const parsed = parseStep(out.res.text);
     if (!parsed) {

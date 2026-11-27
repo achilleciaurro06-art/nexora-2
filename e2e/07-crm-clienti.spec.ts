@@ -19,6 +19,7 @@ let activeBefore = 0;
 test("creazione cliente con tipologia, settore, sito web e campi personalizzati", async ({ page }) => {
   activeBefore = await dashboardCustomers(page);
   await page.goto("/clienti/nuovo");
+  await page.getByText("Altri dettagli").click(); // sezione richiudibile: i dettagli non essenziali
   await page.getByLabel("Ragione sociale / Nome *").fill(NAME);
   await page.getByLabel("Tipologia").selectOption("company");
   await page.getByLabel("Settore di attività").fill("Impianti termici");

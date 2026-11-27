@@ -15,6 +15,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
 import { fmtDay, fmtTime, todayIn } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
+import { AgendaNav } from "@/components/layout/agenda-nav";
 
 export const metadata = { title: "Promemoria" };
 const TABS: { key: View; label: string; slug: string }[] = [
@@ -55,6 +56,7 @@ export default async function RemindersPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
+      <AgendaNav active="promemoria" />
       <PageHeader title="Promemoria" description={`Il lavoro di oggi in un solo posto: attività, follow-up, appuntamenti e telefonate da fare. Prossimi = entro ${UPCOMING_DAYS} giorni.`}
         actions={can(ctx.org.role, "ai:use") ? <div className="flex flex-wrap gap-2"><AskCopilotButton question="Cosa devo fare oggi?" label="Cosa devo fare oggi?" /><AskCopilotButton question="Quali follow-up sono in ritardo e quali attività hanno priorità?" label="Priorità" /></div> : undefined} />
       <dl className="mb-6 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6" data-testid="reminder-counters">

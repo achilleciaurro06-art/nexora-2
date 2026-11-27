@@ -52,6 +52,7 @@ test("campi personalizzati: creazione, validazione, disattivazione senza perdere
 
 test("cliente con campi personalizzati: obbligatorio, salvataggio e valori conservati", async ({ page }) => {
   await page.goto("/clienti/nuovo");
+  await page.getByText("Altri dettagli").click(); // sezione richiudibile: i dettagli non essenziali
   await page.getByLabel("Ragione sociale / Nome *").fill("Verdi Serramenti Srl");
   await page.getByLabel("Tipo di cliente").selectOption("Impresa");
   await page.getByLabel("Classe energetica *").selectOption(""); // obbligatorio: validazione del browser
