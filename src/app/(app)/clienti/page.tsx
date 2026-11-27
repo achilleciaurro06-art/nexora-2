@@ -6,7 +6,7 @@ import { countArchivedCustomers, listCustomers } from "@/modules/clienti/reposit
 import { ArrowDown, ArrowUp, ChevronsUpDown, Plus, Search, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
-import { Alert, Badge, EmptyState, PageHeader, Table } from "@/components/ui/card";
+import { Alert, Badge, EmptyState, PageHeader, Table, Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { RemoveButton } from "@/components/ui/remove-button";
@@ -59,10 +59,10 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   };
   const withOpen = customers.filter((c) => (qc.get(c.id)?.open ?? 0) > 0).length;
   const kpis = [
-    { label: archived ? "Archiviati" : "Clienti", value: customers.length },
-    { label: "Con preventivi aperti", value: withOpen },
-    { label: "Potenziali", value: customers.filter((c) => c.status === "lead").length },
-    { label: "Attivi", value: customers.filter((c) => c.status === "active").length },
+    { label: archived ? "Archiviati" : "Clienti", value: customers.length, tone: archived ? "slate" : "violet", ink: archived ? "text-foreground" : "text-violet" },
+    { label: "Con preventivi aperti", value: withOpen, tone: "amber", ink: "text-warning" },
+    { label: "Potenziali", value: customers.filter((c) => c.status === "lead").length, tone: "blue", ink: "text-primary" },
+    { label: "Attivi", value: customers.filter((c) => c.status === "active").length, tone: "green", ink: "text-success" },
   ];
 
   return (
@@ -72,7 +72,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
       {sp.eliminato && <div className="mb-4"><Alert kind="success">Cliente eliminato definitivamente.</Alert></div>}
 
       <dl className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Indicatori dell'elenco">
-        {kpis.map((k) => <div key={k.label} className="rounded-lg border border-border bg-card px-4 py-3 shadow-card"><dt className="text-xs font-medium text-muted">{k.label}</dt><dd className="mt-0.5 text-xl font-semibold">{k.value}</dd></div>)}
+        {kpis.map((k) => <Card key={k.label} tone={k.tone as "violet" | "amber" | "blue" | "green" | "slate"} className="px-4 py-3"><dt className="text-xs font-semibold text-foreground/70">{k.label}</dt><dd className={`mt-0.5 text-2xl font-bold tabular-nums ${k.ink}`}>{k.value}</dd></Card>)}
       </dl>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

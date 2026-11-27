@@ -55,7 +55,7 @@ export default async function CopilotPage({ searchParams }: { searchParams: Prom
         <DigitalTexture intensity="medium" />
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky"><Sparkles className="size-3.5" />NEXORA Copilot</p>
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky"><Sparkles className="size-3.5" />Assistente AI di NEXORA</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">Copilot AI</h1>
             <p className="mt-0.5 max-w-2xl text-sm text-slate-300">L&apos;assistente che conosce la tua azienda: legge i dati reali con gli strumenti autorizzati e prepara azioni da confermare.</p>
           </div>

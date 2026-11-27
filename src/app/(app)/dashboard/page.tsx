@@ -120,10 +120,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
 
   const mainKpis = [
-    { label: "Valore dei preventivi", value: formatEur(issuedCents), sub: "emessi (non è fatturato)", href: "/preventivi", icon: Wallet },
-    { label: "Preventivi in attesa", value: formatEur(sum("sent")), sub: `${count("sent")} attivi · ${count("draft")} bozze`, href: "/preventivi?status=sent", icon: FileText },
-    { label: "Clienti", value: String(customers.count ?? 0), sub: "attivi", href: "/clienti", icon: Users },
-    { label: "Tasso di accettazione", value: rate === null ? "—" : `${rate}%`, sub: decided ? `${decided} preventivi decisi` : "nessun dato", icon: Target },
+    { label: "Valore dei preventivi", value: formatEur(issuedCents), sub: "emessi (non è fatturato)", href: "/preventivi", icon: Wallet, tone: "blue" as const, ink: "text-primary" },
+    { label: "Preventivi in attesa", value: formatEur(sum("sent")), sub: `${count("sent")} attivi · ${count("draft")} in preparazione`, href: "/preventivi?status=sent", icon: FileText, tone: "amber" as const, ink: "text-warning" },
+    { label: "Clienti", value: String(customers.count ?? 0), sub: "attivi", href: "/clienti", icon: Users, tone: "violet" as const, ink: "text-violet" },
+    { label: "Tasso di accettazione", value: rate === null ? "—" : `${rate}%`, sub: decided ? `${decided} preventivi decisi` : "nessun dato", icon: Target, tone: "green" as const, ink: "text-success" },
   ];
   const secondary = [
     { label: `Accettati ${year}`, value: formatEur(acceptedYear), href: "/preventivi?status=accepted" },
@@ -165,10 +165,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <section aria-label="Il lavoro di oggi" className="mb-8" data-testid="today-work">
         <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Cosa fare oggi</h2><Link className="text-sm font-medium text-primary hover:underline" href="/promemoria">Apri i promemoria</Link></div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Link href="/promemoria?vista=oggi"><Card className="nx-t h-full p-4 hover:border-primary/40"><p className="text-sm text-muted">Da completare oggi</p><p className="mt-1 text-xl font-semibold" data-testid="dash-today">{ac.today}</p><p className="mt-0.5 text-xs text-muted">{mineToday} assegnati a te</p></Card></Link>
-          <Link href="/promemoria?vista=ritardo"><Card className={ac.overdue > 0 ? "nx-t h-full border-danger/50 p-4" : "nx-t h-full p-4 hover:border-primary/40"}><p className="text-sm text-muted">Scaduti</p><p className={ac.overdue > 0 ? "mt-1 text-xl font-semibold text-danger" : "mt-1 text-xl font-semibold"} data-testid="dash-overdue">{ac.overdue}</p><p className="mt-0.5 text-xs text-muted">{ac.urgent} urgenti</p></Card></Link>
-          <Link href="/followup"><Card className="nx-t h-full p-4 hover:border-primary/40"><p className="text-sm text-muted">Follow-up da effettuare</p><p className="mt-1 text-xl font-semibold" data-testid="dash-followups">{followUpsDue}</p><p className="mt-0.5 text-xs text-muted">con data di oggi o passata</p></Card></Link>
-          <Link href="/appuntamenti?vista=elenco"><Card className="nx-t h-full p-4 hover:border-primary/40"><p className="text-sm text-muted">Appuntamenti (7 giorni)</p><p className="mt-1 text-xl font-semibold" data-testid="dash-appointments">{nextApps.length}</p><p className="mt-0.5 text-xs text-muted">{nextApps[0] ? `Prossimo: ${fmtDay(nextApps[0].when_date!)} ${fmtTime(nextApps[0].when_at!)}` : "nessuno in programma"}</p></Card></Link>
+          <Link href="/promemoria?vista=oggi"><Card tone="blue" className="nx-t h-full p-4 hover:brightness-[0.98]"><p className="text-sm font-semibold text-foreground/75">Da completare oggi</p><p className="mt-1 text-2xl font-bold tabular-nums text-primary" data-testid="dash-today">{ac.today}</p><p className="mt-0.5 text-xs text-muted">{mineToday} assegnati a te</p></Card></Link>
+          <Link href="/promemoria?vista=ritardo"><Card tone={ac.overdue > 0 ? "red" : "slate"} className="nx-t h-full p-4 hover:brightness-[0.98]"><p className="text-sm font-semibold text-foreground/75">Scaduti</p><p className={ac.overdue > 0 ? "mt-1 text-2xl font-bold tabular-nums text-danger" : "mt-1 text-2xl font-bold tabular-nums"} data-testid="dash-overdue">{ac.overdue}</p><p className="mt-0.5 text-xs text-muted">{ac.urgent} urgenti</p></Card></Link>
+          <Link href="/followup"><Card tone="amber" className="nx-t h-full p-4 hover:brightness-[0.98]"><p className="text-sm font-semibold text-foreground/75">Follow-up da effettuare</p><p className="mt-1 text-2xl font-bold tabular-nums text-warning" data-testid="dash-followups">{followUpsDue}</p><p className="mt-0.5 text-xs text-muted">con data di oggi o passata</p></Card></Link>
+          <Link href="/appuntamenti?vista=elenco"><Card tone="slate" className="nx-t h-full p-4 hover:brightness-[0.98]"><p className="text-sm font-semibold text-foreground/75">Appuntamenti (7 giorni)</p><p className="mt-1 text-2xl font-bold tabular-nums text-[#0e7490]" data-testid="dash-appointments">{nextApps.length}</p><p className="mt-0.5 text-xs text-muted">{nextApps[0] ? `Prossimo: ${fmtDay(nextApps[0].when_date!)} ${fmtTime(nextApps[0].when_at!)}` : "nessuno in programma"}</p></Card></Link>
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
           <Card>
@@ -229,10 +229,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {mainKpis.map((k) => {
           const Icon = k.icon;
           const body = (
-            <Card className="nx-t h-full hover:border-primary/40">
-              <div className="flex items-start justify-between"><p className="text-sm font-medium text-muted">{k.label}</p><span className="inline-flex size-8 items-center justify-center rounded-md bg-primary/10 text-primary"><Icon className="size-4" /></span></div>
-              <p className="mt-2 text-[1.75rem] font-semibold leading-none tracking-tight">{k.value}</p>
-              {k.sub && <p className="mt-2 text-xs text-muted">{k.sub}</p>}
+            <Card tone={k.tone} className="nx-t h-full hover:brightness-[0.98]">
+              <div className="flex items-start justify-between"><p className="text-sm font-semibold text-foreground/75">{k.label}</p><span className={`inline-flex size-9 items-center justify-center rounded-md bg-white/80 ${k.ink}`}><Icon className="size-[18px]" /></span></div>
+              <p className={`mt-3 text-[2.1rem] font-bold leading-none tracking-tight tabular-nums ${k.ink}`}>{k.value}</p>
+              {k.sub && <p className="mt-2 text-xs font-medium text-foreground/60">{k.sub}</p>}
             </Card>
           );
           return k.href ? <Link key={k.label} href={k.href} className="block">{body}</Link> : <div key={k.label}>{body}</div>;

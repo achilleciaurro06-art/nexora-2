@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Bell, CalendarDays, ChevronsLeft, ChevronsRight, FileText, FolderOpen, LayoutDashboard, Mail, MoreHorizontal, Phone, Settings, ShieldCheck, Sparkles, Users, X, CheckSquare, Clock, Repeat, BellRing } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { moduleOf, moduleStyle } from "./modules";
 import { Logo, LogoMark } from "@/components/brand/logo";
 
 type Item = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; };
@@ -52,9 +53,8 @@ export function Sidebar({ isPlatformAdmin, labels = {}, badges = {}, unread, org
     return (
       <Link key={i.href} href={i.href} aria-current={active ? "page" : undefined} title={collapsed ? label(i) : undefined}
         className={cn("nx-t group relative flex items-center gap-3 rounded-md px-3 text-sm", opts.child ? "h-[clamp(28px,3.8dvh,36px)] text-[0.82rem]" : "h-[clamp(30px,4.3dvh,40px)]",
-          active ? "bg-primary/20 font-medium text-white" : "text-slate-300 hover:bg-white/[0.06] hover:text-white", collapsed && "justify-center px-0")}>
-        {active && <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-sky" />}
-        <Icon className={cn("size-[18px] shrink-0", active ? "text-sky" : "text-slate-400 group-hover:text-slate-200")} />
+          active ? "bg-primary font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_1px_6px_rgba(23,71,232,0.45)]" : "text-slate-200 hover:bg-white/[0.08] hover:text-white", collapsed && "justify-center px-0")}>
+        <Icon className={cn("size-[18px] shrink-0", active ? "text-white" : moduleStyle(moduleOf(i.href)).onDark)} />
         {!collapsed && <span className="truncate">{label(i)}</span>}
         {badge > 0 && <span className={cn("rounded-sm bg-primary px-1.5 text-[11px] font-semibold text-white", collapsed ? "absolute right-1.5 top-1" : "ml-auto")} aria-label={`${badge} non lette`}>{badge}</span>}
       </Link>
@@ -72,8 +72,8 @@ export function Sidebar({ isPlatformAdmin, labels = {}, badges = {}, unread, org
 
       <nav className="mt-[clamp(4px,1.2dvh,12px)] flex-1 space-y-0.5 overflow-y-auto px-3 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Principale">
         {MAIN.map((i) => link(i))}
-        <p className={cn("flex items-center gap-2 px-3 pb-1 pt-[clamp(6px,1.8dvh,16px)] text-[11px] font-semibold uppercase tracking-wider text-slate-500", collapsed && "justify-center px-0")}>
-          <CalendarDays className="size-3.5" />{!collapsed && "Agenda"}
+        <p className={cn("flex items-center gap-2 px-3 pb-1 pt-[clamp(6px,1.8dvh,16px)] text-[11px] font-bold uppercase tracking-wider text-slate-400", collapsed && "justify-center px-0")}>
+          <CalendarDays className="size-3.5 text-[#67d4ee]" />{!collapsed && "Agenda"}
         </p>
         {AGENDA.map((i) => link(i, { child: true }))}
         {isPlatformAdmin && <div className="pt-2">{link(ADMIN)}</div>}
@@ -117,8 +117,8 @@ export function BottomNav({ isPlatformAdmin, labels = {}, unread, userSlot }: { 
           const active = i.label === "Agenda" ? agendaOn : on(path, i.href);
           const Icon = i.icon;
           return (
-            <Link key={i.href} href={i.href} aria-current={active ? "page" : undefined} className={cn("nx-t flex flex-col items-center gap-0.5 py-2 text-[11px]", active ? "text-white" : "text-slate-400")}>
-              <Icon className={cn("size-5", active && "text-sky")} />{labels[i.href] ?? i.label}
+            <Link key={i.href} href={i.href} aria-current={active ? "page" : undefined} className={cn("nx-t flex flex-col items-center gap-0.5 py-2 text-[11px]", active ? "font-semibold text-white" : "text-slate-300")}>
+              <Icon className={cn("size-5", active ? "text-sky" : moduleStyle(moduleOf(i.href)).onDark)} />{labels[i.href] ?? i.label}
             </Link>
           );
         })}
@@ -138,7 +138,7 @@ export function BottomNav({ isPlatformAdmin, labels = {}, unread, userSlot }: { 
                 return (
                   <li key={i.href}>
                     <Link href={i.href} className={cn("nx-t flex h-20 flex-col items-center justify-center gap-1.5 rounded-lg border border-white/10 text-xs", i.href === "/copilot" ? "bg-gradient-to-br from-deep to-[#0b2270] text-white" : "bg-white/[0.04] hover:bg-white/10", on(path, i.href) && "border-sky/60")}>
-                      <Icon className="size-5 text-sky" />{labels[i.href] ?? i.label}
+                      <Icon className={cn("size-5", moduleStyle(moduleOf(i.href)).onDark)} />{labels[i.href] ?? i.label}
                     </Link>
                   </li>
                 );

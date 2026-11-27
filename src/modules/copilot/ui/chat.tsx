@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/input";
 import { Alert } from "@/components/ui/card";
 import { RichText } from "@/components/ui/rich-text";
 import { ProposalCard, type ProposalView } from "./proposal-card";
+import { Sparkles } from "lucide-react";
 
 export type Source = { label: string; href?: string };
 export type ChatMessage = { id: string; role: "user" | "assistant"; content: string; sources?: Source[] };
@@ -129,8 +130,8 @@ export function ChatPanel({ conversationId: initialId, initialMessages, initialP
           </div>
         )}
         {messages.map((m) => (
-          <div key={m.id} className={m.role === "user" ? "ml-8 min-w-0 rounded-lg bg-primary/10 p-3 text-sm [overflow-wrap:anywhere]" : "mr-4 min-w-0 rounded-lg border border-border p-3 text-sm [overflow-wrap:anywhere]"} data-testid={m.role === "assistant" ? "assistant-message" : "user-message"}>
-            <p className="mb-1 text-xs text-muted">{m.role === "user" ? "Tu" : "Copilot"}</p>
+          <div key={m.id} className={m.role === "user" ? "ml-8 min-w-0 rounded-lg bg-primary/10 p-3 text-sm [overflow-wrap:anywhere]" : "mr-4 min-w-0 rounded-lg border border-primary/25 border-l-[3px] border-l-primary bg-surface-blue/60 p-3 text-sm [overflow-wrap:anywhere]"} data-testid={m.role === "assistant" ? "assistant-message" : "user-message"}>
+            <p className={m.role === "user" ? "mb-1 text-xs font-medium text-muted" : "mb-1 flex items-center gap-1 text-xs font-semibold text-primary"}>{m.role === "user" ? "Tu" : <><Sparkles className="size-3" aria-hidden />Copilot AI</>}</p>
             {m.role === "user" ? <p className="whitespace-pre-wrap">{m.content}</p> : <RichText text={m.content} />}
             {m.role === "assistant" && m.sources && m.sources.length > 0 && (
               <p className="mt-2 text-xs text-muted" data-testid="sources">Dati consultati: {m.sources.map((s, i) => <span key={i}>{i > 0 && ", "}{s.href ? <Link className="underline" href={s.href}>{s.label}</Link> : s.label}</span>)}</p>

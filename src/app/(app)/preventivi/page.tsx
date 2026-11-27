@@ -11,7 +11,7 @@ import { formatEur } from "@/lib/money";
 import { RemoveButton } from "@/components/ui/remove-button";
 import { deleteQuoteAction } from "@/modules/preventivi/actions";
 import { getSector } from "@/modules/settore/queries";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { StatusBadge, quoteStatusBar } from "@/components/ui/status-badge";
 import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/types/domain";
 import { QuoteStatusMenu } from "@/modules/preventivi/ui/status-menu";
 
@@ -35,21 +35,21 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
         {FILTERS.map((f) => (
           <Link key={f || "all"} href={f ? `/preventivi?status=${f}` : "/preventivi"} aria-current={(status ?? "") === f ? "page" : undefined}
             className={cn("nx-t rounded-sm px-3 py-1.5 text-sm", (status ?? "") === f ? "bg-primary text-white" : "text-muted hover:text-foreground")}>
-            {f ? QUOTE_STATUS_LABEL[f] : "Tutti"}
+            {f ? <span className="inline-flex items-center gap-1.5"><span aria-hidden className={cn("size-2 rounded-full", (status ?? "") === f ? "bg-white" : quoteStatusBar(f))} />{QUOTE_STATUS_LABEL[f]}</span> : "Tutti"}
           </Link>
         ))}
       </nav>
       <Table>
-        <thead><tr><th>Numero</th><th>Cliente</th><th>Oggetto</th><th>Data</th><th>Stato</th><th className="text-right">Totale</th>{canDelete && <th />}</tr></thead>
+        <thead><tr><th>Numero</th><th className="hidden md:table-cell">Cliente</th><th className="hidden lg:table-cell">Oggetto</th><th className="hidden lg:table-cell">Data</th><th>Stato</th><th className="text-right">Totale</th>{canDelete && <th />}</tr></thead>
         <tbody>
           {quotes.length === 0 && <tr><td colSpan={7}><EmptyState icon={<FileText className="size-5" />} title="Nessun preventivo." description={status ? "Nessun preventivo con questo stato." : "Crea il primo preventivo per iniziare."} /></td></tr>}
           {quotes.map((q) => {
             const c = Array.isArray(q.customers) ? q.customers[0] : q.customers;
             return (
               <tr key={q.id}>
-                <td><Link className="font-medium text-primary hover:underline" href={`/preventivi/${q.id}`}>{q.number}</Link></td>
-                <td>{c ? (c.deleted_at ? <span className="text-muted">{c.name} (cliente rimosso)</span> : c.archived_at ? <span className="text-muted">{c.name} (cliente archiviato)</span> : c.name) : "—"}</td><td>{q.title ?? "—"}</td>
-                <td>{new Date(q.issue_date).toLocaleDateString("it-IT")}</td>
+                <td><Link className="font-medium text-primary hover:underline" href={`/preventivi/${q.id}`}>{q.number}</Link>{c && <span className="mt-0.5 block max-w-40 truncate text-xs text-muted md:hidden">{c.name}</span>}</td>
+                <td className="hidden md:table-cell">{c ? (c.deleted_at ? <span className="text-muted">{c.name} (cliente rimosso)</span> : c.archived_at ? <span className="text-muted">{c.name} (cliente archiviato)</span> : c.name) : "—"}</td><td className="hidden lg:table-cell">{q.title ?? "—"}</td>
+                <td className="hidden lg:table-cell">{new Date(q.issue_date).toLocaleDateString("it-IT")}</td>
                 <td>{canWrite && q.status !== "accepted" ? <QuoteStatusMenu id={q.id} status={q.status} number={q.number} /> : <StatusBadge status={q.status} />}</td>
                 <td className="text-right">{formatEur(q.total_cents)}</td>
                 {canDelete && (

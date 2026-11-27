@@ -1,18 +1,33 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { ModuleChip } from "@/components/layout/module-chip";
 
-export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-lg border border-border bg-card p-5 shadow-card", className)} {...props} />;
+/** Superfici alternate: «plain» bianca; le altre sono tonalità leggere per distinguere le aree (non per decorare). */
+const CARD_TONE = {
+  plain: "border-border bg-card",
+  blue: "border-primary/20 bg-surface-blue",
+  violet: "border-violet/20 bg-surface-violet",
+  teal: "border-teal/20 bg-surface-teal",
+  amber: "border-warning/25 bg-surface-amber",
+  slate: "border-border bg-surface-slate",
+  green: "border-success/25 bg-surface-green",
+  red: "border-danger/30 bg-[#fde4e1]",
+} as const;
+export function Card({ className, tone = "plain", ...props }: React.HTMLAttributes<HTMLDivElement> & { tone?: keyof typeof CARD_TONE }) {
+  return <div className={cn("rounded-lg border p-5 shadow-card", CARD_TONE[tone], className)} {...props} />;
 }
 export function Badge({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) {
-  return <span className={cn("inline-flex items-center rounded-sm border border-border bg-subtle px-2 py-0.5 text-xs font-medium text-foreground/80", className)} {...props} />;
+  return <span className={cn("inline-flex items-center rounded-sm border border-border bg-head px-2 py-0.5 text-xs font-medium text-foreground/80", className)} {...props} />;
 }
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: React.ReactNode }) {
   return (
-    <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0">
-        <h1 className="text-[1.6rem] font-semibold leading-tight tracking-tight">{title}</h1>
-        {description ? <p className="mt-1 max-w-3xl text-sm text-muted">{description}</p> : null}
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-3.5">
+        <ModuleChip />
+        <div className="min-w-0">
+          <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-foreground">{title}</h1>
+          {description ? <p className="mt-0.5 max-w-3xl text-sm text-muted">{description}</p> : null}
+        </div>
       </div>
       {actions}
     </div>
@@ -23,7 +38,7 @@ export function Table({ className, ...props }: React.TableHTMLAttributes<HTMLTab
     <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-card">
       <table
         className={cn(
-          "w-full text-left text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:px-4 [&_th]:py-2.5 [&_th]:text-xs [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted [&_thead]:bg-subtle [&_tbody_tr]:nx-t [&_tbody_tr:hover]:bg-primary/[0.03] [&_tr]:border-b [&_tr]:border-line last:[&_tr]:border-0",
+          "w-full text-left text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:px-4 [&_th]:py-2.5 [&_th]:text-xs [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-foreground/70 [&_thead]:bg-head [&_thead]:border-b [&_thead]:border-border [&_tbody_tr]:nx-t [&_tbody_tr:nth-child(even)]:bg-subtle/70 [&_tbody_tr:hover]:bg-primary/[0.07] [&_tr]:border-b [&_tr]:border-line last:[&_tr]:border-0",
           className,
         )}
         {...props}
